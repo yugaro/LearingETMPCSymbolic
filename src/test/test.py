@@ -32,12 +32,13 @@ class MultitaskGPModel(gpytorch.models.ExactGP):
         self.covar_module = gpytorch.kernels.MultitaskKernel(
             data_covar_module=gpytorch.kernels.ScaleKernel(
                 base_kernel=gpytorch.kernels.RBFKernel(ard_num_dims=z_train.size(1))),
-            num_tasks=y_train.size(1)
+            num_tasks=y_train.size(1), rank=y_train.size(1)
         )
 
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
+        print(covar_x.evaluate())
         return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, covar_x)
 
 x1 = (x1_max - x1_min) * torch.rand(train_num, 1) + x1_min
@@ -62,7 +63,7 @@ model = MultitaskGPModel(z_train, y_train, likelihood)
 
 model.train()
 likelihood.train()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.5)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
 
 for i in range(100):
