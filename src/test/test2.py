@@ -50,10 +50,6 @@ d = torch.cat([-(nu1[0] + nu1[1] * x1 + nu1[2] * x1 * x1) / M1, -(nu2[0] +
 z_train = torch.cat([x, u], dim=1)
 y_train = x + Delta * (f + w + d)
 
-print(z_train.size())
-print(y_train.size())
-
-
 likelihood0 = gpytorch.likelihoods.GaussianLikelihood()
 model0 = ExactGPModel(z_train, y_train[:, 0], likelihood0)
 likelihood1 = gpytorch.likelihoods.GaussianLikelihood()
@@ -76,13 +72,6 @@ for k in range(100):
     output = models(*models.train_inputs)
     loss = -mll(output, models.train_targets)
     loss.backward()
-    # print('Iter %d/%d - Loss: %.3f' %
-    #       (k + 1, 100, loss.item()))
-    # print('a')
-    # print(models.models[0].covar_module.base_kernel.lengthscale)
-    # print(models.models[1].covar_module.base_kernel.lengthscale)
-    # print(models.models[2].covar_module.base_kernel.lengthscale)
-    # print('b')
     optimizer.step()
 
 
@@ -90,8 +79,6 @@ x1t = (x1_max - x1_min) * torch.rand(test_num, 1) + x1_min
 x2t = (x2_max - x2_min) * torch.rand(test_num, 1) + x2_min
 x3t = (x3_max - x3_min) * torch.rand(test_num, 1) + x3_min
 ut = (u_max - u_min) * torch.rand(test_num, 1) + u_min
-# at = (a_max - a_min) * torch.rand(test_num, 1) + a_min
-
 xt = torch.cat([x1t, x2t, x3t], dim=1)
 
 models.eval()
