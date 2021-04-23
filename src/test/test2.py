@@ -2,7 +2,7 @@ import torch
 import gpytorch
 from matplotlib import pyplot as plt
 torch.manual_seed(1)
-train_num = 100
+train_num = 110
 test_num = 30
 x1_min = 18
 x1_max = 25
@@ -49,6 +49,10 @@ d = torch.cat([-(nu1[0] + nu1[1] * x1 + nu1[2] * x1 * x1) / M1, -(nu2[0] +
 
 z_train = torch.cat([x, u], dim=1)
 y_train = x + Delta * (f + w + d)
+
+print(z_train.size())
+print(y_train.size())
+
 
 likelihood0 = gpytorch.likelihoods.GaussianLikelihood()
 model0 = ExactGPModel(z_train, y_train[:, 0], likelihood0)
