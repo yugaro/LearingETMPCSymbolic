@@ -41,9 +41,9 @@ X2_max = 100
 
 v = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]])
 
-b1 = 1
-b2 = 1
-b3 = 1
+b0 = 15
+b1 = 18
+b2 = 127
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, z_train, y_train, likelihood):
@@ -52,12 +52,10 @@ class ExactGPModel(gpytorch.models.ExactGP):
         self.covar_module = gpytorch.kernels.ScaleKernel(
             base_kernel=gpytorch.kernels.RBFKernel(ard_num_dims=z_train.size(1)))
 
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        print(mean_x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
+    def forward(self, z):
+        mean = self.mean_module(z)
+        covar = self.covar_module(z)
+        return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 def cal_epsilon(alpha, Lambda, etax_v):
     return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * etax_v.dot(np.linalg.inv(Lambda)).dot(etax_v))))
@@ -103,6 +101,8 @@ model1 = ExactGPModel(z_train, y_train[:, 1], likelihood1)
 likelihood2 = gpytorch.likelihoods.GaussianLikelihood()
 model2 = ExactGPModel(z_train, y_train[:, 2], likelihood2)
 
+# print(model0.covar_module.lazy_covariance_matrix)
+
 models = gpytorch.models.IndependentModelList(model0, model1, model2)
 likelihoods = gpytorch.likelihoods.LikelihoodList(
     model0.likelihood, model1.likelihood, model2.likelihood)
@@ -120,30 +120,62 @@ for k in range(gp_updata_time):
     loss.backward()
     optimizer.step()
 
+K0 = models(*models.train_inputs)[0].covariance_matrix
+K1 = models(*models.train_inputs)[1].covariance_matrix
+K2 = models(*models.train_inputs)[2].covariance_matrix
+
+beta0 = torch.sqrt(b0 * b0 - torch.matmul(torch.matmul(
+    models.train_targets[0], torch.inverse(K0)), models.train_targets[0]) + Time)
+beta1 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(
+    models.train_targets[1], torch.inverse(K1)), models.train_targets[1]) + Time)
+beta2 = torch.sqrt(b2 * b2 - torch.matmul(torch.matmul(
+    models.train_targets[2], torch.inverse(K2)), models.train_targets[2]) + Time)
+print(beta0)
+print(beta1)
+print(beta2)
+
 models.eval()
 likelihoods.eval()
 
-alpha0 = models.models[0].covar_module.outputscale.to('cpu').detach().numpy()
-Lambda0 = np.diag(models.models[0].covar_module.base_kernel.lengthscale.to(
+# alpha0 = models.models[0].covar_module.outputscale
+# Lambda0 = torch.diag(models.models[0].covar_module.base_kernel.lengthscale.reshape(-1))
+# K0 = alpha0 * torch.matmul(torch.matmul(z_train, Lambda0).T, z_train)
+# alpha1 = models.models[1].covar_module.outputscale
+# Lambda1 = torch.diag(models.models[1].covar_module.base_kernel.lengthscale.reshape(-1))
+# K1 = alpha1 * torch.matmul(torch.matmul(z_train, Lambda1).T, z_train)
+# alpha2 = models.models[2].covar_module.outputscale
+# Lambda2 = torch.diag(
+#     models.models[2].covar_module.base_kernel.lengthscale.reshape(-1))
+# K2 = alpha2 * torch.matmul(torch.matmul(z_train, Lambda2).T, z_train)
+
+# print(torch.matmul(torch.matmul(z_train, Lambda0), z_train.T))
+# print(K0)
+
+
+# beta0 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(y_train[:, 0], K0).T, y_train[:, 0]) + Time)
+# print(beta0)
+alpha0x = models.models[0].covar_module.outputscale.to('cpu').detach().numpy()
+Lambda0x = np.diag(models.models[0].covar_module.base_kernel.lengthscale.to(
     'cpu').detach().numpy().reshape(-1)[:3])
-alpha1 = models.models[1].covar_module.outputscale.to('cpu').detach().numpy()
-Lambda1 = np.diag(models.models[1].covar_module.base_kernel.lengthscale.to(
+alpha1x = models.models[1].covar_module.outputscale.to('cpu').detach().numpy()
+Lambda1x = np.diag(models.models[1].covar_module.base_kernel.lengthscale.to(
     'cpu').detach().numpy().reshape(-1)[:3])
-alpha2 = models.models[2].covar_module.outputscale.to('cpu').detach().numpy()
-Lambda2 = np.diag(models.models[2].covar_module.base_kernel.lengthscale.to(
+alpha2x = models.models[2].covar_module.outputscale.to('cpu').detach().numpy()
+Lambda2x = np.diag(models.models[2].covar_module.base_kernel.lengthscale.to(
     'cpu').detach().numpy().reshape(-1)[:3])
+
 
 X0 = np.arange(X0_min, X0_max, etax)
 X1 = np.arange(X1_min, X1_max, etax)
 X2 = np.arange(X2_min, X2_max, etax)
 U = np.arange(u_min, u_max, etau)
 
-epsilon0 = cal_epsilon(alpha0, Lambda0, etax_v)
-epsilon1 = cal_epsilon(alpha1, Lambda1, etax_v)
-epsilon2 = cal_epsilon(alpha2, Lambda2, etax_v)
-c0 = 2 * np.log((2 * (alpha0**2)) / (2 * (alpha0**2) - (epsilon0**2)))
-c1 = 2 * np.log((2 * (alpha1**2)) / (2 * (alpha1**2) - (epsilon1**2)))
-c2 = 2 * np.log((2 * (alpha2**2)) / (2 * (alpha2**2) - (epsilon2**2)))
+epsilon0 = cal_epsilon(alpha0x, Lambda0x, etax_v)
+epsilon1 = cal_epsilon(alpha1x, Lambda1x, etax_v)
+epsilon2 = cal_epsilon(alpha2x, Lambda2x, etax_v)
+c0 = 2 * np.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2)))
+c1 = 2 * np.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2)))
+c2 = 2 * np.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2)))
 
 
 X = np.zeros([1, 3])
@@ -153,66 +185,7 @@ for i in range(X0.shape[0]):
         for k in range(X2.shape[0]):
             x_vec = np.array([X0[i], X1[j], X2[k]])
             X = np.append(X, x_vec.reshape(1, -1), axis=0)
-            if kernel_check(x_vec, c0, Lambda0) and kernel_check(x_vec, c1, Lambda1) and kernel_check(x_vec, c2, Lambda2):
+            if kernel_check(x_vec, c0, Lambda0x) and kernel_check(x_vec, c1, Lambda1x) and kernel_check(x_vec, c2, Lambda2x):
                 Q = np.append(Q, x_vec.reshape(1, -1), axis=0)
 
 print('a')
-
-# for i in range(Q.shape[0]):
-#     for j in range(U.shape[0]):
-
-# print(X)
-# print(Q)
-# print(X.shape)
-# print(Q.shape)
-
-# z_test = torch.zeros(1, 4)
-# y_test = Delta * torch.tensor([[-nu1[0] / M1, -nu2[0] / M2, 0]])
-# lowerlist = torch.zeros(1, 3)
-# upperlist = torch.zeros(1, 3)
-# for t in range(Time):
-#     if t == 0:
-#         x = xinit
-#     u = (u_max - u_min) * torch.rand(1) + u_min
-
-#     z = torch.cat([x, u], dim=0).reshape(1, -1)
-#     z_train = torch.cat([z_test, z], dim=0)
-
-#     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-#         predictions = likelihoods(*models(z, z, z))
-#     mean0 = predictions[0].mean
-#     mean1 = predictions[1].mean
-#     mean2 = predictions[2].mean
-#     x_next = torch.cat([mean0, mean1, mean2], dim=0)
-#     y_test = torch.cat([y_test, x_next.reshape(1, -1)], dim=0)
-#     x = x_next
-
-#     lower0, upper0 = predictions[0].confidence_region()
-#     lower1, upper1 = predictions[1].confidence_region()
-#     lower2, upper2 = predictions[2].confidence_region()
-#     lowers = torch.cat([lower0, lower1, lower2], dim=0)
-#     uppers = torch.cat([upper0, upper1, upper2], dim=0)
-#     lowerlist = torch.cat([lowerlist, lowers.reshape(1, -1)], dim=0)
-#     upperlist = torch.cat([upperlist, uppers.reshape(1, -1)], dim=0)
-
-# fig, ax = plt.subplots(1, 1, figsize=(18, 12))
-# ax.plot(y_train[1:, 0], c='r')
-# ax.plot(y_train[1:, 1], c='b')
-# fig.savefig('ccc.png')
-
-# fig, ax = plt.subplots(1, 1, figsize=(18, 12))
-# ax.plot(y_train[1:, 1], y_train[1:, 2], c='g')
-# fig.savefig('ddd.png')
-
-# fig, ax = plt.subplots(1, 1, figsize=(18, 12))
-# ax.plot(y_test[1:, 0], c='r')
-# ax.fill_between(np.arange(Time),
-#                 lowerlist[1:, 0], upperlist[1:, 0], alpha=0.3, facecolor='r')
-# ax.plot(y_test[1:, 1], c='b')
-# ax.fill_between(np.arange(Time),
-#                 lowerlist[1:, 1], upperlist[1:, 1], alpha=0.3, facecolor='b')
-# fig.savefig('eee.png')
-
-# fig, ax = plt.subplots(1, 1, figsize=(18, 12))
-# ax.plot(y_test[1:, 1], y_test[1:, 2], c='g')
-# fig.savefig('fff.png')

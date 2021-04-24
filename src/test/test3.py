@@ -100,11 +100,14 @@ for t in range(Time):
     mean0 = predictions[0].mean
     mean1 = predictions[1].mean
     mean2 = predictions[2].mean
+    # print(mean0 + 2 * torch.sqrt(predictions[0].variance))
+
     x_next = torch.cat([mean0, mean1, mean2], dim=0)
     y_test = torch.cat([y_test, x_next.reshape(1, -1)], dim=0)
     x = x_next
 
     lower0, upper0 = predictions[0].confidence_region()
+    # print(upper0)
     lower1, upper1 = predictions[1].confidence_region()
     lower2, upper2 = predictions[2].confidence_region()
     lowers = torch.cat([lower0, lower1, lower2], dim=0)
