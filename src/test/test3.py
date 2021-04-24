@@ -93,6 +93,7 @@ for t in range(Time):
     u = (u_max - u_min) * torch.rand(1) + u_min
 
     z = torch.cat([x, u], dim=0).reshape(1, -1)
+    # print(z)
     z_train = torch.cat([z_test, z], dim=0)
 
     with torch.no_grad(), gpytorch.settings.fast_pred_var():
