@@ -24,18 +24,14 @@ u_max = 1
 xinit = torch.tensor([[20, 20, 60], [20, 25, 60], [
                      25, 20, 60], [25, 25, 60], [20, 22.5, 60], [22.5, 20, 60], [22.5, 22.5, 60], [25, 25, 60], [18, 15, 60], [18, 18, 60]])
 
-Time = 15
-epochs = 10
-gp_updata_time = 100
+Time = 5
+epochs = 6
+gp_updata_time = 500
 
 
 etax = 0.5
 etax_v = torch.tensor([etax, etax, etax])
 etau = 0.2
-
-gamma0 = 0.1
-gamma1 = 0.1
-gamma2 = 0.1
 
 X0_min = 18
 X0_max = 25
@@ -47,16 +43,18 @@ X2_max = 100
 v = torch.tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.],
                   [0., -1., 0.], [0., 0., 1.], [0., 0., -1.]])
 
-L = 1
-b0 = 1
-b1 = 1
-b2 = 1
+L = 0.1
+b0 = 0.1
+b1 = 0.1
+b2 = 0.1
+
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, z_train, y_train, likelihood):
         super(ExactGPModel, self).__init__(z_train, y_train, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        outputscale_constraint = gpytorch.constraints.Positive(initial_value=torch.tensor(0.05))
+        outputscale_constraint = gpytorch.constraints.Positive(
+            initial_value=torch.tensor(0.05))
         self.covar_module = gpytorch.kernels.ScaleKernel(
             outputscale_constraint=outputscale_constraint, base_kernel=gpytorch.kernels.RBFKernel(ard_num_dims=z_train.size(1)))
 
@@ -102,7 +100,8 @@ for epoch in range(epochs):
         x_next = x + Delta * (f + w + d)
         z = torch.cat([x, u], dim=0).reshape(1, -1)
         z_train = torch.cat([z_train, z], dim=0)
-        y_train = torch.cat([y_train, (x_next - (x + Delta * (f + w))).reshape(1, -1)], dim=0)
+        y_train = torch.cat(
+            [y_train, (x_next - (x + Delta * (f + w))).reshape(1, -1)], dim=0)
         x = x_next
 
 likelihood0 = gpytorch.likelihoods.GaussianLikelihood()
@@ -138,6 +137,10 @@ K1 = models(*models.train_inputs)[1].covariance_matrix + \
 K2 = models(*models.train_inputs)[2].covariance_matrix + \
     torch.eye(Time * epochs) * a_max
 
+# K0 = models(*models.train_inputs)[0].covariance_matrix
+# K1 = models(*models.train_inputs)[1].covariance_matrix
+# K2 = models(*models.train_inputs)[2].covariance_matrix
+
 beta0 = torch.sqrt(b0 * b0 - torch.matmul(torch.matmul(
     models.train_targets[0], torch.inverse(K0)), models.train_targets[0]) + Time * epochs)
 beta1 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(
@@ -156,10 +159,10 @@ Lambda2x = torch.diag(
     models.models[2].covar_module.base_kernel.lengthscale.reshape(-1)[:3])
 
 
-X0 = torch.arange(X0_min, X0_max, etax)
-X1 = torch.arange(X1_min, X1_max, etax)
-X2 = torch.arange(X2_min, X2_max, etax)
-Uq = torch.arange(u_min, u_max, etau)
+X0 = torch.arange(X0_min, X0_max + etax, etax)
+X1 = torch.arange(X1_min, X1_max + etax, etax)
+X2 = torch.arange(X2_min, X2_max + etax, etax)
+Uq = torch.arange(u_min, u_max + etau, etau)
 
 epsilon0 = cal_epsilon(alpha0x, Lambda0x, etax_v)
 epsilon1 = cal_epsilon(alpha1x, Lambda1x, etax_v)
@@ -168,18 +171,35 @@ c0 = 2 * torch.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2)))
 c1 = 2 * torch.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2)))
 c2 = 2 * torch.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2)))
 
-# print('a')
-# print(beta0)
-# print(beta1)
-# print(beta2)
-# print(alpha0x)
-# print(alpha1x)
-# print(alpha2x)
-# print(epsilon0)
-# print(epsilon1)
-# print(epsilon2)
+gamma0 = (1.4142 * alpha0x - 2 * epsilon0) / 2
+gamma1 = (1.4142 * alpha1x - 2 * epsilon1) / 2
+gamma2 = (1.4142 * alpha2x - 2 * epsilon2) / 2
+
+cq0 = 2 * torch.log((2 * (alpha0x**2)) /
+                    (2 * (alpha0x**2) - ((2 * epsilon0 + gamma0)**2)))
+cq1 = 2 * torch.log((2 * (alpha1x**2)) /
+                    (2 * (alpha1x**2) - ((2 * epsilon1 + gamma1)**2)))
+cq2 = 2 * torch.log((2 * (alpha2x**2)) /
+                    (2 * (alpha2x**2) - ((2 * epsilon2 + gamma2)**2)))
+
 
 print('symbolic model')
+# Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
+# for i in range(X0.shape[0]):
+#     for j in range(X1.shape[0]):
+#         for k in range(X2.shape[0]):
+#             x_vec = torch.tensor([X0[i], X1[j], X2[k]])
+#             if kernel_check(x_vec, c0, Lambda0x) and kernel_check(x_vec, c1, Lambda1x) and kernel_check(x_vec, c2, Lambda2x):
+#                 Q[i][j][k] = 1
+# # print(X)
+# Q_np = Q.to('cpu').detach().numpy()
+# np.save('./Q_np2.npy', Q_np)
+Q = torch.from_numpy(np.load('./Q_np2.npy'))
+# print(Q)
+# print(X1.shape)
+# print(X2.shape)
+# print(X0.shape)
+# print(Q.shape)
 # X = torch.zeros([1, 3])
 # Q = torch.zeros([1, 3])
 # for i in range(X0.shape[0]):
@@ -193,7 +213,7 @@ print('symbolic model')
 # Q = Q[1:].clone()
 # Q_np = Q[1:].to('cpu').detach().numpy()
 # np.save('./Q_np.npy', Q_np)
-Q = torch.from_numpy(np.load('./Q_np.npy'))
+# Q = torch.from_numpy(np.load('./Q_np.npy'))
 
 # print(X)
 # print(Q)
@@ -202,36 +222,110 @@ Q = torch.from_numpy(np.load('./Q_np.npy'))
 
 models.eval()
 likelihoods.eval()
+
 for i in range(Q.shape[0]):
-    x_test = Q[i]
-    for j in range(Uq.shape[0]):
-        u_test = Uq[j]
-        z_test = torch.cat([x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
-        with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            predictions = likelihoods(*models(z_test, z_test, z_test))
-        f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
+    for j in range(Q.shape[1]):
+        for k in range(Q.shape[2]):
+            if Q[i][j][k] == 0:
+                continue
+            else:
+                x_test = torch.tensor([X0[i], X1[j], X2[k]])
+                u_flag = 0
+                for l in range(Uq.shape[0]):
+                    u_test = Uq[l]
+                    z_test = torch.cat(
+                        [x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
+                    with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                        predictions = likelihoods(
+                            *models(z_test, z_test, z_test))
 
-        mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
-        mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
-        mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
-        sigma0 = predictions[0].variance
-        sigma1 = predictions[1].variance
-        sigma2 = predictions[2].variance
+                    f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
+                    mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
+                    mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
+                    mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
+                    sigma0 = predictions[0].variance
+                    sigma1 = predictions[1].variance
+                    sigma2 = predictions[2].variance
 
-        xpre0l = mean0 - \
-            (L * etax + b0 * epsilon0 + beta0 * torch.sqrt(sigma0) + etax)
-        xpre0u = mean0 + \
-            (L * etax + b0 * epsilon0 + beta0 * torch.sqrt(sigma0) + etax)
-        xpre1l = mean1 - \
-            (L * etax + b1 * epsilon1 + beta1 * torch.sqrt(sigma1) + etax)
-        xpre1u = mean1 + \
-            (L * etax + b1 * epsilon1 + beta1 * torch.sqrt(sigma1) + etax)
-        xpre2l = mean2 - \
-            (L * etax + b2 * epsilon2 + beta2 * torch.sqrt(sigma2) + etax)
-        xpre2u = mean2 + \
-            (L * etax + b2 * epsilon2 + beta2 * torch.sqrt(sigma2) + etax)
-        # print('a')
-        # print(x_test[1])
-        # print(mean1)
-        # print(xpre1l)
-        # print(xpre1u)
+                    xpre0l = mean0 - \
+                        (L * etax + b0 * epsilon0 +
+                         beta0 * torch.sqrt(sigma0) + etax)
+                    xpre0u = mean0 + \
+                        (L * etax + b0 * epsilon0 +
+                         beta0 * torch.sqrt(sigma0) + etax)
+                    xpre1l = mean1 - \
+                        (L * etax + b1 * epsilon1 +
+                         beta1 * torch.sqrt(sigma1) + etax)
+                    xpre1u = mean1 + \
+                        (L * etax + b1 * epsilon1 +
+                         beta1 * torch.sqrt(sigma1) + etax)
+                    xpre2l = mean2 - \
+                        (L * etax + b2 * epsilon2 +
+                         beta2 * torch.sqrt(sigma2) + etax)
+                    xpre2u = mean2 + \
+                        (L * etax + b2 * epsilon2 +
+                         beta2 * torch.sqrt(sigma2) + etax)
+                    ind0_min = int(torch.ceil((xpre0l - X0_min) / etax).item())
+                    ind0_max = int(((X0_max - xpre0u) // etax).item())
+                    ind1_min = int(torch.ceil((xpre1l - X1_min) / etax).item())
+                    ind1_max = int(((X1_max - xpre1u) // etax).item())
+                    ind2_min = int(torch.ceil((xpre2l - X2_min) / etax).item())
+                    ind2_max = int(((X2_max - xpre2u) // etax).item())
+
+                    if ind0_min < 0 or ind1_min < 0 or ind2_min < 0 or ind0_max > Q.shape[0] or ind1_max > Q.shape[1] or ind2_max > Q.shape[2]:
+                        continue
+                    else:
+                        ind_flag = 1
+                        for ind0 in range(ind0_max - ind0_min):
+                            for ind1 in range(ind1_max - ind1_min):
+                                for ind2 in range(ind2_max - ind2_min):
+                                    if Q[ind0_min + ind0][ind1_min + ind1][ind2_min + ind2] == 0:
+                                        ind_flag = 0
+                                        break
+                                if ind_flag == 0:
+                                    break
+                            if ind_flag == 0:
+                                break
+                        if ind_flag == 1:
+                            print('OK')
+                            break
+                        elif ind_flag == 0:
+                            Q[i][j][k] == 0
+
+print(Q)
+
+# for i in range(Q.shape[0]):
+#     x_test = Q[i]
+#     for j in range(Uq.shape[0]):
+#         u_test = Uq[j]
+#         z_test = torch.cat([x_test, torch.tensor([u_test])],
+#                            dim=0).reshape(1, -1)
+#         with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#             predictions = likelihoods(*models(z_test, z_test, z_test))
+#         f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
+
+#         mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
+#         mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
+#         mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
+#         sigma0 = predictions[0].variance
+#         sigma1 = predictions[1].variance
+#         sigma2 = predictions[2].variance
+
+#         xpre0l = mean0 - \
+#             (L * etax + b0 * epsilon0 + beta0 * torch.sqrt(sigma0) + etax)
+#         xpre0u = mean0 + \
+#             (L * etax + b0 * epsilon0 + beta0 * torch.sqrt(sigma0) + etax)
+#         xpre1l = mean1 - \
+#             (L * etax + b1 * epsilon1 + beta1 * torch.sqrt(sigma1) + etax)
+#         xpre1u = mean1 + \
+#             (L * etax + b1 * epsilon1 + beta1 * torch.sqrt(sigma1) + etax)
+#         xpre2l = mean2 - \
+#             (L * etax + b2 * epsilon2 + beta2 * torch.sqrt(sigma2) + etax)
+#         xpre2u = mean2 + \
+#             (L * etax + b2 * epsilon2 + beta2 * torch.sqrt(sigma2) + etax)
+#         print(xpre1u)
+#         print('a')
+#         print(x_test[1])
+#         print(mean1)
+#         print(xpre1l)
+#         print(xpre1u)
