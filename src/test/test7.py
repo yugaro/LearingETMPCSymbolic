@@ -22,7 +22,7 @@ xinit = torch.tensor([[20, 20, 60], [20, 25, 60], [
 
 Time = 5
 epochs = 6
-gp_updata_time = 100
+gp_updata_time = 300
 
 etax = 0.5
 etax_v = torch.tensor([etax, etax, etax])
@@ -139,6 +139,9 @@ beta1 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(
     models.train_targets[1], torch.inverse(K1)), models.train_targets[1]) + Time * epochs)
 beta2 = torch.sqrt(b2 * b2 - torch.matmul(torch.matmul(
     models.train_targets[2], torch.inverse(K2)), models.train_targets[2]) + Time * epochs)
+print(beta0)
+print(beta1)
+print(beta2)
 
 alpha0x = models.models[0].covar_module.outputscale
 Lambda0x = torch.diag(
@@ -155,7 +158,8 @@ Lambdax_list = [Lambda0x, Lambda1x, Lambda2x]
 X0 = torch.arange(X0_min, X0_max + etax, etax)
 X1 = torch.arange(X1_min, X1_max + etax, etax)
 X2 = torch.arange(X2_min, X2_max + etax, etax)
-Uq = torch.arange(u_min, u_max + etau, etau)
+# U = torch.arange(u_min, u_max + etau, etau)
+U = torch.tensor([0, 0.2, -0.2, 0.4, -0.4, 0.6, -0.6, 0.8, -0.8, 1.0, -1.0])
 
 epsilon0 = cal_epsilon(alpha0x, Lambda0x, etax_v)
 epsilon1 = cal_epsilon(alpha1x, Lambda1x, etax_v)
@@ -243,7 +247,6 @@ def min_max_range_cal(X_range_list, c_list, Lambda_list, etax):
     Xq_range_list_ind = [[int((Xq0_min.item() - X_range_list[0][0]) / etax), int((Xq0_max.item() - X_range_list[0][0]) / etax)], [
         int((Xq1_min.item() - X_range_list[1][0]) / etax), int((Xq1_max.item() - X_range_list[1][0]) / etax)], [
             int((Xq2_min.item() - X_range_list[2][0]) / etax), int((Xq2_max.item() - X_range_list[2][0]) / etax)]]
-
     return Xq_range_list, Xq_range_list_ind
 
 Xq_range_list, Xq_range_list_ind = min_max_range_cal(
@@ -261,19 +264,7 @@ Q[Xq_range_list_ind[0][0]:Xq_range_list_ind[0][1],
 Qin = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
 Qin[Xqin_range_list_ind[0][0]:Xqin_range_list_ind[0][1],
     Xqin_range_list_ind[1][0]:Xqin_range_list_ind[1][1], Xqin_range_list_ind[2][0]:Xqin_range_list_ind[2][1]] = 1
-
-# Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
-# for i in range(X0.shape[0]):
-#     for j in range(X1.shape[0]):
-#         for k in range(X2.shape[0]):
-#             x_vec = torch.tensor([X0[i], X1[j], X2[k]])
-#             if kernel_check(x_vec, c0, Lambda0x) and kernel_check(x_vec, c1, Lambda1x) and kernel_check(x_vec, c2, Lambda2x):
-#                 Q[i][j][k] = 1
-
-
-# Q_np = Q.to('cpu').detach().numpy()
-# np.save('./Q_np2.npy', Q_np)
-# Q = torch.from_numpy(np.load('./Q_np2.npy'))
+Uq = torch.ones([X0.shape[0], X1.shape[0], X2.shape[0]]) * INF
 
 models.eval()
 likelihoods.eval()
@@ -286,8 +277,8 @@ likelihoods.eval()
 #             else:
 #                 x_test = torch.tensor([X0[i], X1[j], X2[k]])
 #                 u_flag = 0
-#                 for l in range(Uq.shape[0]):
-#                     u_test = Uq[l]
+#                 for l in range(U.shape[0]):
+#                     u_test = U[l]
 #                     z_test = torch.cat(
 #                         [x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
 #                     with torch.no_grad(), gpytorch.settings.fast_pred_var():
@@ -327,14 +318,14 @@ likelihoods.eval()
 #                     ind2_min = int(torch.ceil((xpre2l - X2_min) / etax).item())
 #                     ind2_max = int(((X2_max - xpre2u) // etax).item())
 
-#                     if ind0_min < 0 or ind1_min < 0 or ind2_min < 0 or ind0_max > Q.shape[0] or ind1_max > Q.shape[1] or ind2_max > Q.shape[2]:
+#                     if ind0_min < Xqin_range_list_ind[0][0] or ind1_min < Xqin_range_list_ind[1][0] or ind2_min < Xqin_range_list_ind[2][0] or ind0_max > Xqin_range_list_ind[0][1] or ind1_max > Xqin_range_list_ind[1][1] or ind2_max > Xqin_range_list_ind[2][1]:
 #                         continue
 #                     else:
 #                         ind_flag = 1
 #                         for ind0 in range(ind0_max - ind0_min):
 #                             for ind1 in range(ind1_max - ind1_min):
 #                                 for ind2 in range(ind2_max - ind2_min):
-#                                     if Q[ind0_min + ind0][ind1_min + ind1][ind2_min + ind2] == 0:
+#                                     if Qin[ind0_min + ind0][ind1_min + ind1][ind2_min + ind2] == 0:
 #                                         ind_flag = 0
 #                                         break
 #                                 if ind_flag == 0:
@@ -342,9 +333,23 @@ likelihoods.eval()
 #                             if ind_flag == 0:
 #                                 break
 #                         if ind_flag == 1:
-#                             print('OK')
+#                             Uq[i][j][k] = U[l]
 #                             break
 #                         elif ind_flag == 0:
 #                             Q[i][j][k] == 0
 
+# Q_np = Q.to('cpu').detach().numpy()
+# np.save('./Q_np.npy', Q_np)
+# Qin_np = Qin.to('cpu').detach().numpy()
+# np.save('./Qin_np.npy', Qin_np)
+# Uq_np = Uq.to('cpu').detach().numpy()
+# np.save('./Uq_np.npy', Uq_np)
+
+Q = torch.from_numpy(np.load('./Q_np.npy'))
+Qin = torch.from_numpy(np.load('./Qin_np.npy'))
+Uq = torch.from_numpy(np.load('./Uq_np.npy'))
+
+print(torch.nonzero(Qin))
 # print(Q)
+# print(Qin)
+# print(Uq)
