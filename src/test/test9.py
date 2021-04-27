@@ -223,7 +223,7 @@ fig.savefig('aaa.png')
 # Quickly reset the history of the MPC data object.
 mpc.reset_history()
 
-n_steps = 100
+n_steps = 1
 for k in range(n_steps):
     u0 = mpc.make_step(x0)
     y_next = simulator.make_step(u0)

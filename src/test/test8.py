@@ -164,9 +164,9 @@ epsilon0 = cal_epsilon(alpha0x, Lambda0x, etax_v)
 epsilon1 = cal_epsilon(alpha1x, Lambda1x, etax_v)
 epsilon2 = cal_epsilon(alpha2x, Lambda2x, etax_v)
 
-c0 = 2 * torch.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2)))
-c1 = 2 * torch.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2)))
-c2 = 2 * torch.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2)))
+c0 = torch.sqrt(2 * torch.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2))))
+c1 = torch.sqrt(2 * torch.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2))))
+c2 = torch.sqrt(2 * torch.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2))))
 
 c_list = [c0, c1, c2]
 
@@ -343,7 +343,6 @@ while Qflag == 1:
                 elif u_flag == 0:
                     Q[Qind[i, 0].item(), Qind[i, 1].item(), Qind[i, 2].item()] = 0
     Qind = torch.nonzero(Q).clone()
-    Qind_dummy = torch.nonzero(Q_dummy)
     if Qsafeind.shape[0] == Qind.shape[0]:
         Qflag = 0
         break
