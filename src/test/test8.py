@@ -1,17 +1,17 @@
 import torch
 import gpytorch
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-# from matplotlib import pyplot as plt
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+# # from matplotlib import pyplot as plt
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 INF = 1e9
 torch.manual_seed(1)
 np.random.seed(1)
 
-M1 = 100
-M2 = 100
+M1 = 1000
+M2 = 1000
 Delta = 1
 nu1 = [40, 1, 0.2]
 nu2 = [50, 2, 0.1]
@@ -20,11 +20,11 @@ a_max = 0.02
 u_min = -1
 u_max = 1
 xinit = torch.tensor([[20, 20, 60], [20, 25, 60], [
-                     25, 20, 60], [25, 25, 60], [20, 22.5, 60], [22.5, 20, 60], [22.5, 22.5, 60], [25, 25, 60], [18, 15, 60], [18, 18, 60]])
+                     25, 20, 60], [25, 25, 60], [20, 22.5, 70], [22.5, 20, 80], [22.5, 22.5, 60], [25, 25, 60], [18, 15, 60], [18, 18, 60]])
 
 Time = 5
-epochs = 6
-gp_updata_time = 300
+epochs = 5
+gp_updata_time = 500
 
 etax = 0.5
 etax_v = torch.tensor([etax, etax, etax])
@@ -43,10 +43,9 @@ v = torch.tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.],
                   [0., -1., 0.], [0., 0., 1.], [0., 0., -1.]])
 
 L = 0.1
-b0 = 0.1
-b1 = 0.1
-b2 = 0.1
-
+b0 = 1
+b1 = 1
+b2 = 1
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, z_train, y_train, likelihood):
@@ -128,8 +127,8 @@ for k in range(gp_updata_time):
     loss.backward()
     optimizer.step()
 
-K0 = models(
-    *models.train_inputs)[0].covariance_matrix + torch.eye(Time * epochs) * a_max
+K0 = models(*models.train_inputs)[0].covariance_matrix + \
+    torch.eye(Time * epochs) * a_max
 K1 = models(*models.train_inputs)[1].covariance_matrix + \
     torch.eye(Time * epochs) * a_max
 K2 = models(*models.train_inputs)[2].covariance_matrix + \
@@ -141,19 +140,17 @@ beta1 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(
     models.train_targets[1], torch.inverse(K1)), models.train_targets[1]) + Time * epochs)
 beta2 = torch.sqrt(b2 * b2 - torch.matmul(torch.matmul(
     models.train_targets[2], torch.inverse(K2)), models.train_targets[2]) + Time * epochs)
-# print(beta0)
-# print(beta1)
-# print(beta2)
 
-alpha0x = models.models[0].covar_module.outputscale
+
+alpha0x = torch.sqrt(models.models[0].covar_module.outputscale)
+alpha1x = torch.sqrt(models.models[1].covar_module.outputscale)
+alpha2x = torch.sqrt(models.models[2].covar_module.outputscale)
 Lambda0x = torch.diag(
-    models.models[0].covar_module.base_kernel.lengthscale.reshape(-1)[:3])
-alpha1x = models.models[1].covar_module.outputscale
+    models.models[0].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2
 Lambda1x = torch.diag(
-    models.models[1].covar_module.base_kernel.lengthscale.reshape(-1)[:3])
-alpha2x = models.models[2].covar_module.outputscale
+    models.models[1].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2
 Lambda2x = torch.diag(
-    models.models[2].covar_module.base_kernel.lengthscale.reshape(-1)[:3])
+    models.models[2].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2
 
 Lambdax_list = [Lambda0x, Lambda1x, Lambda2x]
 
@@ -161,11 +158,12 @@ X0 = torch.arange(X0_min, X0_max + etax, etax)
 X1 = torch.arange(X1_min, X1_max + etax, etax)
 X2 = torch.arange(X2_min, X2_max + etax, etax)
 # U = torch.arange(u_min, u_max + etau, etau)
-U = torch.tensor([0, 0.2, -0.2, 0.4, -0.4, 0.6, -0.6, 0.8, -0.8, 1.0, -1.0])
+U = torch.tensor([0, -0.2, 0.2, -0.4, 0.4, -0.6, 0.6, -0.8, 0.8, -1.0, 1.0])
 
 epsilon0 = cal_epsilon(alpha0x, Lambda0x, etax_v)
 epsilon1 = cal_epsilon(alpha1x, Lambda1x, etax_v)
 epsilon2 = cal_epsilon(alpha2x, Lambda2x, etax_v)
+
 c0 = 2 * torch.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2)))
 c1 = 2 * torch.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2)))
 c2 = 2 * torch.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2)))
@@ -202,12 +200,6 @@ def min_max_range_cal(X_range_list, c_list, Lambda_list, etax):
     Xq2_min = INF
     Xq2_max = -INF
     for i in range(len(c_list)):
-        # print(c_list[i] *
-        #       torch.matmul(torch.sqrt(Lambda_list[i]), v[0])[0])
-        # print(c_list[i] *
-        #       torch.matmul(torch.sqrt(Lambda_list[i]), v[2])[1])
-        # print(c_list[i] *
-        #       torch.matmul(torch.sqrt(Lambda_list[i]), v[4])[1])
         Xq0_min_tmp = X_range_list[0][0] + c_list[i] * \
             torch.matmul(torch.sqrt(Lambda_list[i]), v[0])[0]
         if Xq0_min > Xq0_min_tmp:
@@ -265,117 +257,186 @@ def min_max_range_cal(X_range_list, c_list, Lambda_list, etax):
 
 Xq_range_list, Xq_range_list_ind = min_max_range_cal(
     X_range_list, c_list, Lambdax_list, etax)
-Xqin_range_list, Xqin_range_list_ind = min_max_range_cal(
-    X_range_list, cqin_list, Lambdax_list, etax)
-# print(Xq_range_list)
-# print(Xqin_range_list)
-# print(Xq_range_list_ind)
-# print(Xqin_range_list_ind)
+# Xqin_range_list, Xqin_range_list_ind = min_max_range_cal(
+#     X_range_list, cqin_list, Lambdax_list, etax)
 
 Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
-Q[Xq_range_list_ind[0][0]:Xq_range_list_ind[0][1],
-    Xq_range_list_ind[1][0]:Xq_range_list_ind[1][1], Xq_range_list_ind[2][0]:Xq_range_list_ind[2][1]] = 1
-Qsafe = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
-Qin = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
-Qin[Xqin_range_list_ind[0][0]:Xqin_range_list_ind[0][1],
-    Xqin_range_list_ind[1][0]:Xqin_range_list_ind[1][1], Xqin_range_list_ind[2][0]:Xqin_range_list_ind[2][1]] = 1
+Q[Xq_range_list_ind[0][0]:Xq_range_list_ind[0][1] + 1,
+    Xq_range_list_ind[1][0]:Xq_range_list_ind[1][1] + 1, Xq_range_list_ind[2][0]:Xq_range_list_ind[2][1] + 1] = 1
+Qind = torch.nonzero(Q)
+# Qsafe = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
+# Qin = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
+# Qin[Xqin_range_list_ind[0][0]:Xqin_range_list_ind[0][1],
+#     Xqin_range_list_ind[1][0]:Xqin_range_list_ind[1][1], Xqin_range_list_ind[2][0]:Xqin_range_list_ind[2][1]] = 1
 Uq = torch.ones([X0.shape[0], X1.shape[0], X2.shape[0]]) * INF
 models.eval()
 likelihoods.eval()
 
-
-for i in range(Q.shape[0]):
-    for j in range(Q.shape[1]):
-        for k in range(Q.shape[2]):
-            if Q[i][j][k] == 1:
-                x_test = torch.tensor([X0[i], X1[j], X2[k]])
+Qflag = 1
+while Qflag == 1:
+    Q0ind_min = Qind[:, 0].min().item()
+    Q0ind_max = Qind[:, 0].max().item()
+    Q1ind_min = Qind[:, 1].min().item()
+    Q1ind_max = Qind[:, 1].max().item()
+    Q2ind_min = Qind[:, 2].min().item()
+    Q2ind_max = Qind[:, 2].max().item()
+    Qsafe = Q.clone()
+    Qsafeind = Qind.clone()
+    for i in range(Qind.shape[0]):
+        x_test = torch.tensor(
+            [X0[Qind[i, 0].item()], X1[Qind[i, 1].item()], X2[Qind[i, 2].item()]])
+        u_flag = 1
+        for l in range(U.shape[0]):
+            if l == U.shape[0] - 1:
                 u_flag = 0
-                for l in range(U.shape[0]):
-                    u_test = U[l]
-                    z_test = torch.cat(
-                        [x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
-                    with torch.no_grad(), gpytorch.settings.fast_pred_var():
-                        predictions = likelihoods(
-                            *models(z_test, z_test, z_test))
+            u_test = U[l]
+            z_test = torch.cat(
+                [x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
+            with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                predictions = likelihoods(
+                    *models(z_test, z_test, z_test))
 
-                    f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
-                    mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
-                    mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
-                    mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
-                    sigma0 = predictions[0].variance
-                    sigma1 = predictions[1].variance
-                    sigma2 = predictions[2].variance
+            f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
+            mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
+            mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
+            mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
+            sigma0 = predictions[0].variance
+            sigma1 = predictions[1].variance
+            sigma2 = predictions[2].variance
 
-                    xpre0l = mean0 - \
-                        (L * etax + b0 * epsilon0 +
-                         beta0 * torch.sqrt(sigma0) + etax)
-                    xpre0u = mean0 + \
-                        (L * etax + b0 * epsilon0 +
-                         beta0 * torch.sqrt(sigma0) + etax)
-                    xpre1l = mean1 - \
-                        (L * etax + b1 * epsilon1 +
-                         beta1 * torch.sqrt(sigma1) + etax)
-                    xpre1u = mean1 + \
-                        (L * etax + b1 * epsilon1 +
-                         beta1 * torch.sqrt(sigma1) + etax)
-                    xpre2l = mean2 - \
-                        (L * etax + b2 * epsilon2 +
-                         beta2 * torch.sqrt(sigma2) + etax)
-                    xpre2u = mean2 + \
-                        (L * etax + b2 * epsilon2 +
-                         beta2 * torch.sqrt(sigma2) + etax)
-                    ind0_min = int(torch.ceil((xpre0l - X0_min) / etax).item())
-                    ind0_max = int(((xpre0u - X0_min) // etax).item())
-                    ind1_min = int(torch.ceil((xpre1l - X1_min) / etax).item())
-                    ind1_max = int(((xpre1u - X1_min) // etax).item())
-                    ind2_min = int(torch.ceil((xpre2l - X2_min) / etax).item())
-                    ind2_max = int(((xpre2u - X2_min) // etax).item())
+            xpre0l = mean0 - (L * etax + b0 * epsilon0 +
+                              beta0 * torch.sqrt(sigma0) + etax)
+            xpre0u = mean0 + (L * etax + b0 * epsilon0 +
+                              beta0 * torch.sqrt(sigma0) + etax)
+            xpre1l = mean1 - (L * etax + b1 * epsilon1 +
+                              beta1 * torch.sqrt(sigma1) + etax)
+            xpre1u = mean1 + (L * etax + b1 * epsilon1 +
+                              beta1 * torch.sqrt(sigma1) + etax)
+            xpre2l = mean2 - (L * etax + b2 * epsilon2 +
+                              beta2 * torch.sqrt(sigma2) + etax)
+            xpre2u = mean2 + (L * etax + b2 * epsilon2 +
+                              beta2 * torch.sqrt(sigma2) + etax)
 
-                    if ind0_min >= Xqin_range_list_ind[0][0] and ind1_min >= Xqin_range_list_ind[1][0] and ind2_min >= Xqin_range_list_ind[2][0] and ind0_max <= Xqin_range_list_ind[0][1] and ind1_max <= Xqin_range_list_ind[1][1] and ind2_max <= Xqin_range_list_ind[2][1]:
-                        ind_flag = 1
-                        for ind0 in range(ind0_max - ind0_min + 1):
-                            for ind1 in range(ind1_max - ind1_min + 1):
-                                for ind2 in range(ind2_max - ind2_min + 1):
-                                    if Qin[ind0_min + ind0][ind1_min + ind1][ind2_min + ind2] == 0:
-                                        ind_flag = 0
-                                        break
-                                if ind_flag == 0:
-                                    break
-                            if ind_flag == 0:
-                                Q[i][j][k] = 0
-                                break
-                        if ind_flag == 1:
-                            print(i, j, k)
-                            Qsafe[i][j][k] = 1
-                            Uq[i][j][k] = U[l]
-                            break
-                    else:
-                        Q[i][j][k] = 0
+            ind0_min = int(torch.ceil((xpre0l - X0_min) / etax).item())
+            ind0_max = int(((xpre0u - X0_min) // etax).item())
+            ind1_min = int(torch.ceil((xpre1l - X1_min) / etax).item())
+            ind1_max = int(((xpre1u - X1_min) // etax).item())
+            ind2_min = int(torch.ceil((xpre2l - X2_min) / etax).item())
+            ind2_max = int(((xpre2u - X2_min) // etax).item())
+
+            if ind0_min >= Q0ind_min and ind0_max <= Q0ind_max and ind1_min >= Q1ind_min and ind1_max <= Q1ind_max and ind2_min >= Q2ind_min and ind2_max <= Q2ind_max:
+                if torch.all(Qsafe[ind0_min:ind0_max + 1, ind1_min:ind1_max + 1, ind2_min:ind2_max + 1] == 1):
+                    Uq[Qind[i, 0].item(), Qind[i, 1].item(),
+                       Qind[i, 2].item()] = u_test
+                    print(Qind[i, 0].item(),
+                          Qind[i, 1].item(), Qind[i, 2].item())
+                    break
+                else:
+                    if u_flag == 1:
+                        continue
+                    elif u_flag == 0:
+                        Q[Qind[i, 0].item(), Qind[i, 1].item(),
+                          Qind[i, 2].item()] = 0
+            else:
+                if u_flag == 1:
+                    continue
+                elif u_flag == 0:
+                    Q[Qind[i, 0].item(), Qind[i, 1].item(), Qind[i, 2].item()] = 0
+    Qind = torch.nonzero(Q).clone()
+    Qind_dummy = torch.nonzero(Q_dummy)
+    if Qsafeind.shape[0] == Qind.shape[0]:
+        Qflag = 0
+        break
+    else:
+        print(Qsafeind.shape[0])
+        print(Qind.shape[0])
+        continue
 
 Qsafe_np = Qsafe.to('cpu').detach().numpy()
 np.save('./Qsafe_np.npy', Qsafe_np)
-Qin_np = Qin.to('cpu').detach().numpy()
-np.save('./Qin_np.npy', Qin_np)
 Uq_np = Uq.to('cpu').detach().numpy()
 np.save('./Uq_np.npy', Uq_np)
 
-Qsafe = torch.from_numpy(np.load('./Qsafe_np.npy'))
-Qin = torch.from_numpy(np.load('./Qin_np.npy'))
-Uq = torch.from_numpy(np.load('./Uq_np.npy'))
+print(Qsafe)
+print(torch.nonzero(Qsafe))
 
-plotdata = torch.nonzero(Qsafe).to('cpu').detach().numpy()
+# for i in range(Q.shape[0]):
+#     for j in range(Q.shape[1]):
+#         for k in range(Q.shape[2]):
+#             if Q[i][j][k] == 1:
+#                 x_test = torch.tensor([X0[i], X1[j], X2[k]])
+#                 u_flag = 0
+#                 for l in range(U.shape[0]):
+#                     u_test = U[l]
+#                     z_test = torch.cat(
+#                         [x_test, torch.tensor([u_test])], dim=0).reshape(1, -1)
+#                     with torch.no_grad(), gpytorch.settings.fast_pred_var():
+#                         predictions = likelihoods(
+#                             *models(z_test, z_test, z_test))
 
-fig = plt.figure()
-ax = Axes3D(fig)
+#                     f = torch.tensor([0, u_test, x_test[0] - x_test[1]])
+#                     mean0 = x_test[0] + Delta * f[0] + predictions[0].mean
+#                     mean1 = x_test[1] + Delta * f[1] + predictions[1].mean
+#                     mean2 = x_test[2] + Delta * f[2] + predictions[2].mean
+#                     sigma0 = predictions[0].variance
+#                     sigma1 = predictions[1].variance
+#                     sigma2 = predictions[2].variance
 
-ax.plot(plotdata[:, 0], plotdata[:, 1], plotdata[:, 2],
-        marker="s", linestyle='None', alpha=0.5)
-fig.savefig('./ggg.png')
+#                     xpre0l = mean0 - \
+#                         (L * etax + b0 * epsilon0 +
+#                          beta0 * torch.sqrt(sigma0) + etax)
+#                     xpre0u = mean0 + \
+#                         (L * etax + b0 * epsilon0 +
+#                          beta0 * torch.sqrt(sigma0) + etax)
+#                     xpre1l = mean1 - \
+#                         (L * etax + b1 * epsilon1 +
+#                          beta1 * torch.sqrt(sigma1) + etax)
+#                     xpre1u = mean1 + \
+#                         (L * etax + b1 * epsilon1 +
+#                          beta1 * torch.sqrt(sigma1) + etax)
+#                     xpre2l = mean2 - \
+#                         (L * etax + b2 * epsilon2 +
+#                          beta2 * torch.sqrt(sigma2) + etax)
+#                     xpre2u = mean2 + \
+#                         (L * etax + b2 * epsilon2 +
+#                          beta2 * torch.sqrt(sigma2) + etax)
+#                     ind0_min = int(torch.ceil((xpre0l - X0_min) / etax).item())
+#                     ind0_max = int(((xpre0u - X0_min) // etax).item())
+#                     ind1_min = int(torch.ceil((xpre1l - X1_min) / etax).item())
+#                     ind1_max = int(((xpre1u - X1_min) // etax).item())
+#                     ind2_min = int(torch.ceil((xpre2l - X2_min) / etax).item())
+#                     ind2_max = int(((xpre2u - X2_min) // etax).item())
 
-# print(torch.nonzero(Q))
-# print(torch.nonzero(Qsafe))
-# print(torch.nonzero(Qin))
-# print(torch.nonzero(Qsafe).size())
-# print(torch.nonzero(Qin).size())
-# print(Uq[10][9][46])
-# print(torch.nonzero(Qin).size())
+#                     if ind0_min >= Xqin_range_list_ind[0][0] and ind1_min >= Xqin_range_list_ind[1][0] and ind2_min >= Xqin_range_list_ind[2][0] and ind0_max <= Xqin_range_list_ind[0][1] and ind1_max <= Xqin_range_list_ind[1][1] and ind2_max <= Xqin_range_list_ind[2][1]:
+#                         ind_flag = 1
+#                         for ind0 in range(ind0_max - ind0_min + 1):
+#                             for ind1 in range(ind1_max - ind1_min + 1):
+#                                 for ind2 in range(ind2_max - ind2_min + 1):
+#                                     if Qin[ind0_min + ind0][ind1_min + ind1][ind2_min + ind2] == 0:
+#                                         ind_flag = 0
+#                                         break
+#                                 if ind_flag == 0:
+#                                     break
+#                             if ind_flag == 0:
+#                                 Q[i][j][k] = 0
+#                                 break
+#                         if ind_flag == 1:
+#                             print(i, j, k)
+#                             Qsafe[i][j][k] = 1
+#                             Uq[i][j][k] = U[l]
+#                             break
+#                     else:
+#                         Q[i][j][k] = 0
+
+# Qsafe_np = Qsafe.to('cpu').detach().numpy()
+# np.save('./Qsafe_np.npy', Qsafe_np)
+# Qin_np = Qin.to('cpu').detach().numpy()
+# np.save('./Qin_np.npy', Qin_np)
+# Uq_np = Uq.to('cpu').detach().numpy()
+# np.save('./Uq_np.npy', Uq_np)
+
+# Qsafe = torch.from_numpy(np.load('./Qsafe_np.npy'))
+# Qin = torch.from_numpy(np.load('./Qin_np.npy'))
+# Uq = torch.from_numpy(np.load('./Uq_np.npy'))
+
+# plotdata = torch.nonzero(Qsafe).to('cpu').detach().numpy()
