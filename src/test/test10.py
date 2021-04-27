@@ -4,7 +4,7 @@ import numpy as np
 from casadi import vertcat, exp, SX, diag
 import do_mpc
 from matplotlib import rcParams
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 rcParams['axes.grid'] = True
 rcParams['font.size'] = 18
@@ -269,16 +269,10 @@ setup_mpc = {
     't_step': Delta,
     'state_discretization': 'discrete',
     'store_full_solution': True,
+    'open_loop': True,
+    # 'store_full_solution': True,
 }
 mpc.set_param(**setup_mpc)
-
-# print(costfunc)
-# print(type(costfunc))
-# print(costfunc.shape)
-
-# dummy = xvar[0] * xvar[0]
-# print(dummy)
-# print(dummy.shape)
 
 lterm = model.aux['costfunc']
 mterm = model.aux['costfunc']
@@ -289,10 +283,8 @@ mpc.bounds['lower', '_x', 'xvar'] = np.array([[10], [10], [30]])
 mpc.bounds['upper', '_x', 'xvar'] = np.array([[60], [60], [120]])
 mpc.bounds['upper', '_u', 'uvar'] = -2
 mpc.bounds['upper', '_u', 'uvar'] = 2
-mpc.terminal_bounds['lower', '_x', 'xvar'] = np.array([[15], [15], [30]])
-mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array([[45], [45], [100]])
-
-
+mpc.terminal_bounds['lower', '_x', 'xvar'] = np.array([[38], [38], [30]])
+mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array([[42], [42], [100]])
 mpc.setup()
 
 estimator = do_mpc.estimator.StateFeedback(model)
@@ -306,15 +298,22 @@ simulator.x0 = x0
 estimator.x0 = x0
 mpc.set_initial_guess()
 
-for k in range(50):
-    print(x0)
-    u0 = mpc.make_step(x0)
-    y_next = simulator.make_step(u0)
-    x0 = estimator.make_step(y_next)
-fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
-graphics.plot_results()
-graphics.reset_axes()
-fig.savefig('test.png')
+u0 = mpc.make_step(x0)
+print(u0)
+print('aaaaaaa')
+print(mpc.opt_x_num['_x', 7, 0, 0])
+print(mpc.opt_x_num['_u', 0, 0])
+
+# for k in range(50):
+#     u0 = mpc.make_step(x0)
+#     y_next = simulator.make_step(u0)
+#     x0 = estimator.make_step(y_next)
+# print(mpc.opt_x_num['_x', 0, 0, 0])
+# print(mpc.opt_x_num['_u', 0, 0])
+# fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
+# graphics.plot_results()
+# graphics.reset_axes()
+# fig.savefig('test.png')
 
 # print(xvar_next)
 # print(xvar_next.shape)
