@@ -104,7 +104,7 @@ for epoch in range(epochs):
         z = torch.cat([x, u], dim=0).reshape(1, -1)
         z_train = torch.cat([z_train, z], dim=0)
         y_train = torch.cat(
-            [y_train, (x_next - (x + Delta * (f + w))).reshape(1, -1)], dim=0)
+            [y_train, (x_next - (x + Delta * (f))).reshape(1, -1)], dim=0)
         x = x_next
 
 likelihood0 = gpytorch.likelihoods.GaussianLikelihood()

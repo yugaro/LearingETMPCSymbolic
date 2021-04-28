@@ -19,8 +19,8 @@ M2 = 1000
 Delta = 1
 nu1 = [40, 1, 0.2]
 nu2 = [50, 2, 0.1]
-a_min = -0.02
-a_max = 0.02
+a_min = -0.2
+a_max = 0.8
 u_min = -1
 u_max = 1
 xinit = torch.tensor([[20, 20, 60], [20, 25, 60], [
@@ -104,7 +104,7 @@ for epoch in range(epochs):
         z = torch.cat([x, u], dim=0).reshape(1, -1)
         z_train = torch.cat([z_train, z], dim=0)
         y_train = torch.cat(
-            [y_train, (x_next - (x + Delta * (f + w))).reshape(1, -1)], dim=0)
+            [y_train, (x_next - (x + Delta * (f))).reshape(1, -1)], dim=0)
         x = x_next
 
 likelihood0 = gpytorch.likelihoods.GaussianLikelihood()
@@ -298,22 +298,22 @@ simulator.x0 = x0
 estimator.x0 = x0
 mpc.set_initial_guess()
 
-u0 = mpc.make_step(x0)
-print(u0)
-print('aaaaaaa')
-print(mpc.opt_x_num['_x', 7, 0, 0])
-print(mpc.opt_x_num['_u', 0, 0])
+# u0 = mpc.make_step(x0)
+# print(u0)
+# print('aaaaaaa')
+# print(mpc.opt_x_num['_x', 7, 0, 0])
+# print(mpc.opt_x_num['_u', 0, 0])
 
-# for k in range(50):
-#     u0 = mpc.make_step(x0)
-#     y_next = simulator.make_step(u0)
-#     x0 = estimator.make_step(y_next)
+for k in range(50):
+    u0 = mpc.make_step(x0)
+    y_next = simulator.make_step(u0)
+    x0 = estimator.make_step(y_next)
 # print(mpc.opt_x_num['_x', 0, 0, 0])
 # print(mpc.opt_x_num['_u', 0, 0])
-# fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
-# graphics.plot_results()
-# graphics.reset_axes()
-# fig.savefig('test.png')
+fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
+graphics.plot_results()
+graphics.reset_axes()
+fig.savefig('test2.png')
 
 # print(xvar_next)
 # print(xvar_next.shape)

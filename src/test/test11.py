@@ -331,9 +331,6 @@ print(psi.value)
 print(ALPHA)
 print(ALPHA - psi.value)
 
-# for i in reversed(range(horizon)):
-#     print(i)
-
 # for k in range(50):
 #     u0 = mpc.make_step(x0)
 #     y_next = simulator.make_step(u0)
@@ -342,8 +339,5 @@ print(ALPHA - psi.value)
 # graphics.plot_results()
 # graphics.reset_axes()
 # fig.savefig('test.png')
-# print(mpc.opt_x_num['_x', 0, 0, 0])
-# print(mpc.opt_x_num['_u', 0, 0])
-# print(mpc.bounds['lower', '_x', 'xvar'])
-# print(mpc.bounds['upper', '_x', 'xvar'])
+
 ##########################################################
