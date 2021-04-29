@@ -261,6 +261,4 @@ MPCReturn MPC::runMPC(State &x0)
 void MPC::setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y){
     track_.gen2DSpline(X,Y);
 }
-
-
 }

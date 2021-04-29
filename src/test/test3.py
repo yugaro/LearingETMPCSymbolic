@@ -48,7 +48,8 @@ for t in range(Time):
 
     f = torch.tensor([0, u, x[0] - x[1]])
     w = torch.tensor([a, 0, 0])
-    d = torch.tensor([-(nu1[0] + nu1[1] * x[0] + nu1[2] * x[0] * x[0]) / M1, -(nu2[0] + nu2[1] * x[1] + nu2[2] * x[1] * x[1]) / M2, 0])
+    d = torch.tensor([-(nu1[0] + nu1[1] * x[0] + nu1[2] * x[0] * x[0]) /
+                      M1, -(nu2[0] + nu2[1] * x[1] + nu2[2] * x[1] * x[1]) / M2, 0])
     x_next = x + Delta * (f + w + d)
 
     z = torch.cat([x, u], dim=0).reshape(1, -1)
