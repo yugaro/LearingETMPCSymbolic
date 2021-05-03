@@ -109,7 +109,6 @@ model1 = ExactGPModel(z_train[1:], y_train[1:, 1], likelihood1)
 likelihood2 = gpytorch.likelihoods.GaussianLikelihood()
 model2 = ExactGPModel(z_train[1:], y_train[1:, 2], likelihood2)
 
-
 models = gpytorch.models.IndependentModelList(model0, model1, model2)
 likelihoods = gpytorch.likelihoods.LikelihoodList(
     model0.likelihood, model1.likelihood, model2.likelihood)
@@ -140,7 +139,6 @@ beta1 = torch.sqrt(b1 * b1 - torch.matmul(torch.matmul(
     models.train_targets[1], torch.inverse(K1)), models.train_targets[1]) + Time * epochs)
 beta2 = torch.sqrt(b2 * b2 - torch.matmul(torch.matmul(
     models.train_targets[2], torch.inverse(K2)), models.train_targets[2]) + Time * epochs)
-
 
 alpha0x = torch.sqrt(models.models[0].covar_module.outputscale)
 alpha1x = torch.sqrt(models.models[1].covar_module.outputscale)
