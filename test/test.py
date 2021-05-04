@@ -96,7 +96,7 @@ model_list = []
 for i in range(y_train.shape[1]):
     likelihood_list.append(gpytorch.likelihoods.GaussianLikelihood())
     model_list.append(ExactGPModel(
-        z_train[1:], y_train[1:, 0], likelihood_list[i]))
+        z_train[1:], y_train[1:, i], likelihood_list[i]))
 
 models = gpytorch.models.IndependentModelList(
     model_list[0], model_list[1], model_list[2])

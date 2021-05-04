@@ -147,8 +147,11 @@ def train(z_train, y_train):
 
     alpha = [torch.sqrt(gpmodels.models[i].covar_module.outputscale)
              for i in range(y_train.shape[1])]
-    Lambdax = [torch.diag(
-        gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2 for i in range(y_train.shape[1])]
+    Lambdax = [torch.inverse(torch.diag(
+        gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2) for i in range(y_train.shape[1])]
+
+    print(alpha)
+    print(Lambdax)
 
     return gpmodels, likelihoods, cov, alpha, Lambdax
 
@@ -191,7 +194,6 @@ class safetyGame:
         return torch.all(x + self.ell_param[:, dim] <= torch.max(xlist)) and torch.all(torch.min(xlist) <= x - self.ell_param[:, dim])
 
     def operatioin(self, pos_reg, yaw_reg, V, Omega, L, b):
-        print(self.posx[0])
         X0 = torch.arange(self.posx[0] - pos_reg,
                           self.posx[0] + pos_reg + 0.0001, self.etax)
         X1 = torch.arange(self.posy[0] - pos_reg,
@@ -200,22 +202,22 @@ class safetyGame:
                           self.yaw[0] + yaw_reg + 0.0001, self.etax)
         X_range_min = torch.tensor([X0.min(), X1.min(), X2.min()])
         X_range_max = torch.tensor([X0.max(), X1.max(), X2.max()])
+        print('a')
+        print(self.ell_param)
+        print(X_range_min)
+        print(X_range_max)
         Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
         Qsafe = Q.clone()
-        # print(self.ell_param)
-        # print(X_range_min)
-        # print(X_range_max)
         for i in range(Q.shape[0]):
             for j in range(Q.shape[1]):
                 for k in range(Q.shape[2]):
                     if self.min_max_check(X0[i], X0, dim=0) and self.min_max_check(X1[j], X1, dim=1) and self.min_max_check(X2[k], X2, dim=2):
-                        print('b')
                         Q[i][j][k] = 1
         Qind = torch.nonzero(Q).int()
-        print('a')
-        # print(Qind)
-        for i in range(Qind.shape[0] - 2500):
-            i += 2500
+        print('b')
+        print(Qind)
+        print(Qind.shape)
+        for i in range(Qind.shape[0]):
             print(i)
             u_flag = 0
             for j in range(V.shape[0]):
@@ -238,7 +240,7 @@ class safetyGame:
                     Qind_upper = ((xpre_upper - X_range_min) // etax).int()
                     if torch.all(X_range_min <= xpre_lower) and torch.all(xpre_upper <= X_range_max):
                         if torch.all(Qsafe[Qind_lower[0]:Qind_upper[0] + 1, Qind_lower[1]:Qind_upper[1] + 1, Qind_lower[2]:Qind_upper[2] + 1] == 1):
-                            print('a')
+                            print('c')
                             print(Qind[i])
                             break
                         else:
@@ -293,7 +295,6 @@ if __name__ == '__main__':
     # safety game
     safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
                             alpha, Lambdax, L, b, Time, noise, etax, posx, posy, yaw, marker_num)
-
     safetygame.operatioin(pos_reg, yaw_reg, V, Omega, L, b)
 
 
@@ -356,7 +357,7 @@ if __name__ == '__main__':
 #     predictions_variance = torch.tensor(
 #         [predictions[0].variance, predictions[1].variance, predictions[2].variance])
 #     print('aaaaa')
-#     print(posx[i], posy[i], yaw[i])
+#     print(torch.tensor([posx[i], posy[i], yaw[i]]))
 #     print(x_next_real)
 #     print(x_next_part + predictions_mean)
 #     print(predictions_mean)
