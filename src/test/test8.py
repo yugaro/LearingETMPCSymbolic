@@ -165,6 +165,9 @@ epsilon2 = cal_epsilon(alpha2x, Lambda2x, etax_v)
 c0 = torch.sqrt(2 * torch.log((2 * (alpha0x**2)) / (2 * (alpha0x**2) - (epsilon0**2))))
 c1 = torch.sqrt(2 * torch.log((2 * (alpha1x**2)) / (2 * (alpha1x**2) - (epsilon1**2))))
 c2 = torch.sqrt(2 * torch.log((2 * (alpha2x**2)) / (2 * (alpha2x**2) - (epsilon2**2))))
+print(c0)
+print(c1)
+print(c2)
 
 c_list = [c0, c1, c2]
 
