@@ -170,7 +170,7 @@ class safetyGame:
             [self.ellin[:, i].max() for i in range(3)])
 
     def set_beta(self, b, y, cov):
-        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(self.data_num) * (self.noise ** 2)) @ y + self.data_num / 2)
+        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(self.data_num) * (self.noise ** 2)) @ y + self.data_num)
 
     def set_epsilon(self, alpha, Lambda):
         return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambda) @ self.etax_v)))
@@ -230,7 +230,13 @@ class safetyGame:
 
                     Qind_lower = torch.ceil(
                         (xpre_lower - X_range_min) / self.etax).int()
-                    Qind_upper = ((xpre_upper - X_range_min) // etax).int()
+                    Qind_upper = ((xpre_upper - X_range_min) //
+                                  self.etax).int()
+                    print('aaaaaaaa')
+                    print((xpre_lower - X_range_min) / self.etax)
+                    print(Qind_lower)
+                    print((xpre_upper - X_range_min) // self.etax)
+                    print(Qind_upper)
                     if torch.all(X_range_min <= xpre_lower) and torch.all(xpre_upper <= X_range_max):
                         if torch.all(Qsafe[Qind_lower[0]:Qind_upper[0] + 1, Qind_lower[1]:Qind_upper[1] + 1, Qind_lower[2]:Qind_upper[2] + 1] == 1):
                             Qdataind = torch.ceil(
