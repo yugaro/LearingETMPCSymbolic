@@ -21,6 +21,9 @@ RUN pip3 install -U pip && pip install \
     progressbar2 \
     jupyterlab \
     torch torchvision \
+    gpytorch\
+    do_mpc\
+    casadi\
     scipy
 RUN jupyter serverextension enable --py jupyterlab
 WORKDIR /
