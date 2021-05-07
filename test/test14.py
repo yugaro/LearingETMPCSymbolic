@@ -333,8 +333,9 @@ gpmodels, likelihoods, cov, alpha, Lambdax, Lambda = train(
 #             K[i][j] = (alpha**2) * torch.exp(-0.5 * (z[i] - z[j]) @ (torch.inverse(Lambda)) @ (z[i] - z[j]))
 #     return K
 
+
 class OCP:
-    def __init__(self, ocpmodel, alpha, Lambda, cov, ZT, Y, noise, gamma):
+    def __init__(self, ocpmodel, alpha, Lambda, cov, ZT, Y, noise, gamma, horizon):
         self.ocpmodel = ocpmodel
         self.alpha = [alpha[i].to('cpu').detach().numpy() for i in range(3)]
         self.Lambda = [Lambda[i].to('cpu').detach().numpy() for i in range(3)]
@@ -343,6 +344,7 @@ class OCP:
         self.Y = [Y[i].to('cpu').detach().numpy() for i in range(3)]
         self.noise = noise
         self.gamma = gamma
+        self.horizon = horizon
 
     def kstarF(self, zvar):
         kstar = SX.zeros(3, self.ZT.shape[0])
@@ -359,16 +361,19 @@ class OCP:
         return mu
 
     def cF(self, pg):
-        c = [np.sqrt(2 * np.log((2 * (self.alpha[i]**2)) / (2 * (self.alpha[i]**2) - (pg**2)))) for i in range(3)]
+        c = [np.sqrt(2 * np.log((2 * (self.alpha[i]**2)) /
+                                (2 * (self.alpha[i]**2) - (pg**2)))) for i in range(3)]
         return c
 
     def trigger(self):
         return 0
 
 ocpmodel_type = 'discrete'
+gamma = 0.01
+horizon = 20
 ocpmodel = do_mpc.model.Model(ocpmodel_type)
 ocp = OCP(ocpmodel, alpha, Lambda, cov,
-          gpmodels.train_inputs, gpmodels.train_targets, noise)
+          gpmodels.train_inputs, gpmodels.train_targets, noise, gamma, horizon)
 
 xvar = ocpmodel.set_variable(var_type='_x', var_name='xvar', shape=(3, 1))
 uvar = ocpmodel.set_variable(var_type='_u', var_name='uvar', shape=(2, 1))
@@ -383,8 +388,6 @@ ocpmodel.set_expression(expr_name='costfunc', expr=costfunc)
 ocpmodel.setup()
 
 mpc = do_mpc.controller.MPC(ocpmodel)
-
-horizon = 20
 setup_mpc = {
     'n_robust': 0,
     'n_horizon': horizon,
@@ -417,62 +420,55 @@ mpc.x0 = x0
 simulator.x0 = x0
 estimator.x0 = x0
 mpc.set_initial_guess()
-pathr = torch.from_numpy(x0.astype(np.float64)).reshape(1, -1)
-pathc = torch.from_numpy(x0.astype(np.float64) -
-                         x0.astype(np.float64)).reshape(1, -1)
-pathn = torch.from_numpy(x0.astype(np.float64) -
-                         x0.astype(np.float64)).reshape(1, -1)
 for k in range(200):
-    if k == 0:
-        xr = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-        xe = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-    ur = torch.tensor([vr, omegar])
-    xr_next = vehicle.realRK4(xr, ur)
-    pathr = torch.cat([pathr, xr_next.reshape(1, -1)], dim=0)
-    xr = xr_next
-
     u0 = mpc.make_step(x0)
-    xe_next = vehicle.errRK4(xe, torch.from_numpy(u0.reshape(-1)))
-    pathc = torch.cat([pathc, (xr_next - xe_next).reshape(1, -1)], dim=0)
-    xe = xe_next
+    for i in reversed(range(horizon)):
+        xsuc = torch.from_numpy(
+            np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1))
+        usuc = torch.from_numpy(
+            np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1))
+        zsuc = torch.cat([xsuc, usuc], dim=0).reshape(1, -1).float()
+        
+        print(zsuc)
 
-    y_next = simulator.make_step(u0)
-    x0 = estimator.make_step(y_next)
-    pathn = torch.cat(
-        [pathn, (xr_next - torch.from_numpy(x0.astype(np.float64)).reshape(-1)).reshape(1, -1)], dim=0)
-
-fig, ax = plt.subplots(1, 1)
-ax.plot(pathc[:, 0], pathc[:, 1], c='b', alpha=0.6)
-ax.plot(pathn[:, 0], pathn[:, 1], c='g', alpha=0.6)
-ax.plot(pathr[:, 0], pathr[:, 1], c='r', alpha=0.6)
-fig.savefig('paths.png')
+    # y_next = simulator.make_step(u0)
+    # x0 = estimator.make_step(y_next)
 
 
-#     u0 = mpc.make_step(x0)
-#     if k == 0:
-#         xr = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-#         xe = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
 
-#     xr_next = vehicle.realRK4(xr, torch.from_numpy(u0.reshape(-1)))
-#     xr = xr_next.clone()
-#     pathr = torch.cat([pathr, xr_next.reshape(1, -1)], dim=0)
 
-#     xe_next = vehicle.errRK4(xe, torch.from_numpy(u0.reshape(-1)))
-#     xe = xe_next.clone()
-#     pathe = torch.cat([pathe, xe_next.reshape(1, -1)], dim=0)
+# def plot():
+#     x0 = np.array([[4], [-0.3], [1]])
+#     mpc.x0 = x0
+#     simulator.x0 = x0
+#     estimator.x0 = x0
+#     mpc.set_initial_guess()
+#     pathr = torch.from_numpy(x0.astype(np.float64)).reshape(1, -1)
+#     pathc = torch.from_numpy(x0.astype(np.float64) -
+#                              x0.astype(np.float64)).reshape(1, -1)
+#     pathn = torch.from_numpy(x0.astype(np.float64) -
+#                              x0.astype(np.float64)).reshape(1, -1)
+#     for k in range(200):
+#         if k == 0:
+#             xr = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
+#             xe = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
+#         ur = torch.tensor([vr, omegar])
+#         xr_next = vehicle.realRK4(xr, ur)
+#         pathr = torch.cat([pathr, xr_next.reshape(1, -1)], dim=0)
+#         xr = xr_next
 
-#     y_next = simulator.make_step(u0)
-#     x0 = estimator.make_step(y_next)
-#     pathn = torch.cat([pathn, torch.from_numpy(
-#         x0.astype(np.float64)).reshape(1, -1)], dim=0)
+#         u0 = mpc.make_step(x0)
+#         xe_next = vehicle.errRK4(xe, torch.from_numpy(u0.reshape(-1)))
+#         pathc = torch.cat([pathc, (xr_next - xe_next).reshape(1, -1)], dim=0)
+#         xe = xe_next
 
-# fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
-# graphics.plot_results()
-# graphics.reset_axes()
-# fig.savefig('mpc.png')
+#         y_next = simulator.make_step(u0)
+#         x0 = estimator.make_step(y_next)
+#         pathn = torch.cat(
+#             [pathn, (xr_next - torch.from_numpy(x0.astype(np.float64)).reshape(-1)).reshape(1, -1)], dim=0)
 
-# fig, ax = plt.subplots(1, 1)
-# ax.plot(pathr[:, 0], pathr[:, 1], c='r')
-# ax.plot(pathn[:, 0], pathn[:, 1], c='b')
-# # ax.plot(pathe[:, 0], pathe[:, 1], c='g')
-# fig.savefig('path.png')
+#     fig, ax = plt.subplots(1, 1)
+#     ax.plot(pathc[:, 0], pathc[:, 1], c='b', alpha=0.6)
+#     ax.plot(pathn[:, 0], pathn[:, 1], c='g', alpha=0.6)
+#     ax.plot(pathr[:, 0], pathr[:, 1], c='r', alpha=0.6)
+#     fig.savefig('paths.png')
