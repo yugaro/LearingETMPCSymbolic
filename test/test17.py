@@ -3,10 +3,10 @@ import numpy as np
 import gpytorch
 import do_mpc
 from casadi import vertcat, SX
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import cvxpy as cp
 torch.manual_seed(1)
-np.random.seed(1)
+np.random.seed(3)
 
 
 class VEHICLE:
@@ -169,7 +169,7 @@ class safetyGame:
         return self.gamma
 
     def set_beta(self, b, y, cov):
-        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y + self.data_num)
+        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y + cov.shape[0])
 
     def set_epsilon(self, alpha, Lambdax):
         return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambdax) @ self.etax_v)))
@@ -307,7 +307,7 @@ class ETMPC:
             self.b[i], self.gpmodels.train_targets[i], cov[i]) for i in range(3)])
 
     def set_beta(self, b, y, cov):
-        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + (self.noise ** 2) * torch.eye(cov.shape[0])) @ y + self.data_num)
+        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + (self.noise ** 2) * torch.eye(cov.shape[0])) @ y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(3, self.ZT.shape[0])
@@ -488,281 +488,109 @@ for i in range(Vq.shape[0]):
     for j in range(Omegaq.shape[0]):
         Uq[i * Omegaq.shape[0] + j, 0] = Vq[i]
         Uq[i * Omegaq.shape[0] + j, 1] = Omegaq[j]
-gamma_param = 5
+gamma_param = 15
 
 # set param
 mpctype = 'discrete'
 weightx = np.diag([1, 1, 1])
-gamma = 0.01
-horizon = 20
-x0 = np.array([[3.], [2.], [1.]])
+horizon = 25
+# x0 = np.array([[3.], [2.], [1.]])
 
 if __name__ == '__main__':
-    # create gpmodel
     vehicle = VEHICLE(ts, noise, vr, omegar, Kx, Ky, Ktheta)
     z_train, y_train = make_data(vehicle, xinit, data_num, v_max, omega_max)
-    gpmodels, likelihoods, cov = train(
-        z_train, y_train, gpudate_num)
 
-    # implement safety game
-    safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
-                            b, data_num, noise, etax, Xsafe, Uq, gamma_param)
-    gamma = safetygame.gammaValue()
-    # Qsafe, Qdata, Udata = safetygame.operation()
+    flag_etmpc = 1
+    flag_iter = 1
+    iteration = 0
+    paths = [torch.zeros(1, 3) for i in range(20)]
+    while flag_etmpc == 1:
+        if flag_iter == 1:
+            print('iter:', iteration)
+            gpmodels, likelihoods, cov = train(
+                z_train, y_train, gpudate_num)
 
-    # set etmpc
-    etmpc = ETMPC(vehicle, gpmodels, likelihoods, mpctype, noise, gamma,
-                  horizon, weightx, ts, v_max, omega_max, cov, b, data_num)
-    mpc, simulator, estimator = etmpc.setup()
+            safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
+                                    b, data_num, noise, etax, Xsafe, Uq, gamma_param)
+            gamma = safetygame.gammaValue()
 
-    # implement mpc
-    flag_mpc = 1
-
-    ze_train = torch.zeros(1, 5)
-    ye_train = torch.zeros(1, 3)
-    while flag_mpc == 1:
+            etmpc = ETMPC(vehicle, gpmodels, likelihoods, mpctype, noise, gamma,
+                          horizon, weightx, ts, v_max, omega_max, cov, b, data_num)
+            mpc, simulator, estimator = etmpc.setup()
+            ze_train = torch.zeros(1, 5)
+            ye_train = torch.zeros(1, 3)
+            x0 = 5 * np.random.rand(3, 1) - 2.5
+            flag_iter = 0
         etmpc.set_initial(mpc, simulator, estimator, x0)
         mpc_status, ulist = etmpc.operation(mpc, simulator, estimator, x0)
         trigger_status, trigger_values = etmpc.triggerValue(mpc)
+
+        if flag_iter == 0 and (mpc_status is False or trigger_status == 'infeasible'):
+            print('assumption is not hold.')
+            x0 = 5 * np.random.rand(3, 1) - 2.5
+            continue
+
         if mpc_status and trigger_status == 'optimal':
             ulist_pre = ulist
             for j in range(horizon):
                 if j == 0:
                     xe = torch.from_numpy(x0).reshape(-1)
+                    paths[iteration] = torch.cat(
+                        [paths[iteration], xe.reshape(1, -1)])
                 u = torch.from_numpy(
                     np.array(mpc.opt_x_num['_u', j, 0])).reshape(-1)
                 xe_next = vehicle.errRK4(xe, u)
+                paths[iteration] = torch.cat(
+                    [paths[iteration], xe_next.reshape(1, -1)])
 
                 ze_train, ye_train = etmpc.learnD(
                     xe, u, xe_next, ze_train, ye_train)
 
                 xstar_next = np.array(
                     mpc.opt_x_num['_x', j + 1, 0, 0]).reshape(-1)
-                if j == horizon - 1:
-                    flag_mpc = 0
-                    break
-                elif etmpc.triggerF(xstar_next, xe_next, trigger_values[j + 1]):
+                if etmpc.triggerF(xstar_next, xe_next, trigger_values[j + 1]):
+                    if j == horizon - 2:
+                        flag_etmpc = 0
+                        print('completed')
+                        break
                     xe = xe_next
                 else:
                     trigger_time = j + 1
                     x0 = xe_next.to('cpu').detach().numpy().reshape(-1, 1)
+                    print('trigger:', trigger_time)
                     break
         else:
             for j in range(horizon - trigger_time):
                 if j == 0:
                     xe = torch.from_numpy(x0).reshape(-1)
+                    paths[iteration] = torch.cat(
+                        [paths[iteration], xe.reshape(1, -1)])
                 xe_next = vehicle.errRK4(xe, ulist_pre[trigger_time + j])
+
+                paths[iteration] = torch.cat(
+                    [paths[iteration], xe_next.reshape(1, -1)])
+
                 ze_train, ye_train = etmpc.learnD(
                     xe, u, xe_next, ze_train, ye_train)
                 xe = xe_next
+            x0 = xe.to('cpu').detach().numpy().copy()
 
             z_train_sum, y_train_sum = etmpc.dataCat(ze_train, ye_train)
-            gpmodels, likelihoods, cov = train(
-                z_train, y_train, gpudate_num)
+            z_train = z_train_sum.float().clone()
+            y_train = y_train_sum.float().clone()
+            flag_iter = 1
+        iteration += 1
 
-            break
+cm = plt.cm.get_cmap('jet', iteration)
+fig, ax = plt.subplots(1, 1)
+for i in range(iteration):
+    ax.scatter(paths[i][1, 0], paths[i][1, 1], color=cm(i), marker='o', label='start')
+    ax.scatter(paths[i][-1, 0], paths[i][-1, 1],
+               color=cm(i), marker='*', label='goal')
+    ax.plot(paths[i][1:, 0], paths[i][1:, 1], color=cm(i), label=i)
+plt.legend()
+fig.savefig('paths2.png')
 
-# fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
-# graphics.plot_results()
-# graphics.reset_axes()
-# fig.savefig('mpc2.png')
-
-# x0 = np.array([[4], [-0.3], [1]])
-# mpc.x0 = x0
-# simulator.x0 = x0
-# estimator.x0 = x0
-# mpc.set_initial_guess()
-# pathr = torch.from_numpy(x0.astype(np.float64)).reshape(1, -1)
-# pathc = torch.from_numpy(x0.astype(np.float64) -
-#                             x0.astype(np.float64)).reshape(1, -1)
-# pathn = torch.from_numpy(x0.astype(np.float64) -
-#                             x0.astype(np.float64)).reshape(1, -1)
-# for k in range(200):
-#     if k == 0:
-#         xr = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-#         xe = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-#     ur = torch.tensor([vr, omegar])
-#     xr_next = vehicle.realRK4(xr, ur)
-#     pathr = torch.cat([pathr, xr_next.reshape(1, -1)], dim=0)
-#     xr = xr_next
-
-#     u0 = mpc.make_step(x0)
-#     xe_next = vehicle.errRK4(xe, torch.from_numpy(u0.reshape(-1)))
-#     pathc = torch.cat([pathc, (xr_next - xe_next).reshape(1, -1)], dim=0)
-#     xe = xe_next
-
-#     y_next = simulator.make_step(u0)
-#     x0 = estimator.make_step(y_next)
-#     pathn = torch.cat(
-#         [pathn, (xr_next - torch.from_numpy(x0.astype(np.float64)).reshape(-1)).reshape(1, -1)], dim=0)
-
-# fig, ax = plt.subplots(1, 1)
-# ax.plot(pathc[:, 0], pathc[:, 1], c='b', alpha=0.6)
-# ax.plot(pathn[:, 0], pathn[:, 1], c='g', alpha=0.6)
-# ax.plot(pathr[:, 0], pathr[:, 1], c='r', alpha=0.6)
-# fig.savefig('paths.png')
-
-# safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
-#                         alpha, Lambdax, b, data_num, noise, etax, Xsafe, Uq, gamma_param)
-# Qsafe, Qdata, Udata = safetygame.operation()
-
-# Qsafe_np = Qsafe.to('cpu').detach().numpy()
-# Qdata_np = Qdata.to('cpu').detach().numpy()
-# Udata_np = Udata.to('cpu').detach().numpy()
-# np.save('Qsafe_np2', Qsafe_np)
-# np.save('Qdata_np2', Qdata_np)
-# np.save('Udata_np2', Udata_np)
-
-# def K_check(z, alpha, Lambda):
-#     K = torch.zeros([z.shape[0], z.shape[0]])
-#     for i in range(z.shape[0]):
-#         for j in range(z.shape[0]):
-#             K[i][j] = (alpha**2) * torch.exp(-0.5 * (z[i] - z[j]) @ (torch.inverse(Lambda)) @ (z[i] - z[j]))
-#     return K
-
-
-# class OCP:
-#     def __init__(self, ocpmodel, alpha, Lambda, cov, ZT, Y, noise, gamma, horizon):
-#         self.ocpmodel = ocpmodel
-#         self.alpha = [alpha[i].to('cpu').detach().numpy() for i in range(3)]
-#         self.Lambda = [Lambda[i].to('cpu').detach().numpy() for i in range(3)]
-#         self.cov = [cov[i].to('cpu').detach().numpy() for i in range(3)]
-#         self.ZT = ZT[0][0].to('cpu').detach().numpy()
-#         self.Y = [Y[i].to('cpu').detach().numpy() for i in range(3)]
-#         self.noise = noise
-#         self.gamma = gamma
-#         self.horizon = horizon
-
-#     def kstarF(self, zvar):
-#         kstar = SX.zeros(3, self.ZT.shape[0])
-#         for i in range(3):
-#             for j in range(self.ZT.shape[0]):
-#                 kstar[i, j] = (self.alpha[i] ** 2) * np.exp(-0.5 * (zvar - self.ZT[j, :]).T @
-#                                                             np.linalg.inv(self.Lambda[i]) @ (zvar - self.ZT[j, :]))
-#         return kstar
-
-#     def muF(self, zvar):
-#         kstar = self.kstarF(zvar)
-#         mu = [kstar[i, :] @ np.linalg.inv(self.cov[i] + self.noise * np.identity(
-#             self.cov[i].shape[0])) @ self.Y[i] for i in range(3)]
-#         return mu
-
-#     def cF(self, pg):
-#         c = [np.sqrt(2 * np.log((2 * (self.alpha[i]**2)) /
-#                                 (2 * (self.alpha[i]**2) - (pg**2)))) for i in range(3)]
-#         return c
-
-#     def trigger(self):
-#         return 0
-
-# ocpmodel_type = 'discrete'
-# gamma = 0.01
-# horizon = 20
-# ocpmodel = do_mpc.model.Model(ocpmodel_type)
-# ocp = OCP(ocpmodel, alpha, Lambda, cov,
-#           gpmodels.train_inputs, gpmodels.train_targets, noise, gamma, horizon)
-
-# xvar = ocpmodel.set_variable(var_type='_x', var_name='xvar', shape=(3, 1))
-# uvar = ocpmodel.set_variable(var_type='_u', var_name='uvar', shape=(2, 1))
-# zvar = vertcat(xvar, uvar)
-# mu = ocp.muF(zvar)
-# xvar_next = vertcat(xvar[0] + mu[0], xvar[1] + mu[1], xvar[2] + mu[2])
-# ocpmodel.set_rhs(var_name='xvar', expr=xvar_next)
-
-# weightx = np.diag([1, 1, 1])
-# costfunc = xvar.T @ weightx @ xvar
-# ocpmodel.set_expression(expr_name='costfunc', expr=costfunc)
-# ocpmodel.setup()
-
-# mpc = do_mpc.controller.MPC(ocpmodel)
-# setup_mpc = {
-#     'n_robust': 0,
-#     'n_horizon': horizon,
-#     't_step': ts,
-#     'state_discretization': 'discrete',
-#     'store_full_solution': True,
-# }
-# mpc.set_param(**setup_mpc)
-
-# lterm = ocpmodel.aux['costfunc']
-# mterm = ocpmodel.aux['costfunc']
-# mpc.set_objective(lterm=lterm, mterm=mterm)
-# mpc.set_rterm(uvar=1)
-
-# # mpc.bounds['lower', '_x', 'xvar'] = xlower_bound
-# # mpc.bounds['upper', '_x', 'xvar'] = xupper_bound
-# mpc.bounds['lower', '_u', 'uvar'] = -np.array([[v_max], [omega_max]])
-# mpc.bounds['upper', '_u', 'uvar'] = np.array([[v_max], [omega_max]])
-# mpc.terminal_bounds['lower', '_x', 'xvar'] = - np.array([[0.1], [0.1], [0.1]])
-# mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array([[0.1], [0.1], [0.1]])
-# mpc.setup()
-
-# estimator = do_mpc.estimator.StateFeedback(ocpmodel)
-# simulator = do_mpc.simulator.Simulator(ocpmodel)
-# simulator.set_param(t_step=ts)
-# simulator.setup()
-
-# x0 = np.array([[4], [-0.3], [1]])
-# mpc.x0 = x0
-# simulator.x0 = x0
-# estimator.x0 = x0
-# mpc.set_initial_guess()
-# for k in range(200):
-#     u0 = mpc.make_step(x0)
-#     for i in reversed(range(horizon)):
-#         xsuc = torch.from_numpy(
-#             np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1))
-#         usuc = torch.from_numpy(
-#             np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1))
-#         zsuc = torch.cat([xsuc, usuc], dim=0).reshape(1, -1).float()
-#         with torch.no_grad(), gpytorch.settings.fast_pred_var():
-#             predictions = likelihoods(*gpmodels(zsuc, zsuc, zsuc))
-#         varsuc = [predictions[i].variance for i in range(3)]
-
-#         psi = cp.Variable(3, pos=True)
-#         constranit = [cp.quad_form(psi + DELTA, np.linalg.inv(Lambda0x.to(
-#             'cpu').detach().numpy())) <= (C0.to('cpu').detach().numpy())**2,
-#             cp.quad_form(psi + DELTA, np.linalg.inv(Lambda1x.to(
-#                 'cpu').detach().numpy())) <= (C1.to('cpu').detach().numpy())**2,
-#             cp.quad_form(psi + DELTA, np.linalg.inv(Lambda2x.to(
-#                 'cpu').detach().numpy())) <= (C2.to('cpu').detach().numpy())**2,
-#             psi <= 1.4 * ALPHA]
-#          y_next = simulator.make_step(u0)
-#          x0 = estimator.make_step(y_next)
-
-
-# def plot():
-#     x0 = np.array([[4], [-0.3], [1]])
-#     mpc.x0 = x0
-#     simulator.x0 = x0
-#     estimator.x0 = x0
-#     mpc.set_initial_guess()
-#     pathr = torch.from_numpy(x0.astype(np.float64)).reshape(1, -1)
-#     pathc = torch.from_numpy(x0.astype(np.float64) -
-#                              x0.astype(np.float64)).reshape(1, -1)
-#     pathn = torch.from_numpy(x0.astype(np.float64) -
-#                              x0.astype(np.float64)).reshape(1, -1)
-#     for k in range(200):
-#         if k == 0:
-#             xr = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-#             xe = torch.from_numpy(x0.astype(np.float64)).reshape(-1)
-#         ur = torch.tensor([vr, omegar])
-#         xr_next = vehicle.realRK4(xr, ur)
-#         pathr = torch.cat([pathr, xr_next.reshape(1, -1)], dim=0)
-#         xr = xr_next
-
-#         u0 = mpc.make_step(x0)
-#         xe_next = vehicle.errRK4(xe, torch.from_numpy(u0.reshape(-1)))
-#         pathc = torch.cat([pathc, (xr_next - xe_next).reshape(1, -1)], dim=0)
-#         xe = xe_next
-
-#         y_next = simulator.make_step(u0)
-#         x0 = estimator.make_step(y_next)
-#         pathn = torch.cat(
-#             [pathn, (xr_next - torch.from_numpy(x0.astype(np.float64)).reshape(-1)).reshape(1, -1)], dim=0)
-
-#     fig, ax = plt.subplots(1, 1)
-#     ax.plot(pathc[:, 0], pathc[:, 1], c='b', alpha=0.6)
-#     ax.plot(pathn[:, 0], pathn[:, 1], c='g', alpha=0.6)
-#     ax.plot(pathr[:, 0], pathr[:, 1], c='r', alpha=0.6)
-#     fig.savefig('paths.png')
+print(paths[0].shape)
+print(paths[1].shape)
+print(paths[2].shape)
