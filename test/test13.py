@@ -172,8 +172,8 @@ class safetyGame:
     def set_beta(self, b, y, cov):
         return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(self.data_num) * (self.noise ** 2)) @ y + self.data_num)
 
-    def set_epsilon(self, alpha, Lambda):
-        return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambda) @ self.etax_v)))
+    def set_epsilon(self, alpha, Lambdax):
+        return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambdax) @ self.etax_v)))
 
     def set_c(self, alpha, epsilon):
         return torch.sqrt(2 * torch.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
@@ -207,6 +207,7 @@ class safetyGame:
             Qsafe = Q.clone()
             Qsafeind = Qind.clone()
             for i in range(Qind.shape[0]):
+                # i += 5000
                 print(i)
                 u_flag = 1
                 for j in range(Uq.shape[0]):
@@ -232,11 +233,11 @@ class safetyGame:
                         (xpre_lower - X_range_min) / self.etax).int()
                     Qind_upper = ((xpre_upper - X_range_min) //
                                   self.etax).int()
-                    print('aaaaaaaa')
-                    print((xpre_lower - X_range_min) / self.etax)
-                    print(Qind_lower)
-                    print((xpre_upper - X_range_min) // self.etax)
-                    print(Qind_upper)
+                    # print('aaaaaaaa')
+                    # print((xpre_lower - X_range_min) / self.etax)
+                    # print(Qind_lower)
+                    # print((xpre_upper - X_range_min) // self.etax)
+                    # print(Qind_upper)
                     if torch.all(X_range_min <= xpre_lower) and torch.all(xpre_upper <= X_range_max):
                         if torch.all(Qsafe[Qind_lower[0]:Qind_upper[0] + 1, Qind_lower[1]:Qind_upper[1] + 1, Qind_lower[2]:Qind_upper[2] + 1] == 1):
                             Qdataind = torch.ceil(
@@ -277,8 +278,8 @@ class safetyGame:
 xinit = torch.tensor([1., 1., 1.])
 vr = 1.
 omegar = 1.
-v_max = 2.
-omega_max = 2.
+v_max = 2
+omega_max = 2
 ts = 0.1
 noise = 0.001
 data_num = 100
@@ -292,7 +293,7 @@ gamma_param = 5
 
 # prepare safety game
 etax = 0.1
-etau = 0.4
+etau = 0.2
 Vq_upper = torch.arange(0., v_max + etau, etau)
 Vq_lower = torch.arange(-v_max, 0., etau)
 Omegaq_upper = torch.arange(0., omega_max + etau, etau)
