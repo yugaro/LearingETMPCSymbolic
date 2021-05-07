@@ -372,9 +372,11 @@ class ETMPC:
 
     def operation(self, mpc, simulator, estimator, x0):
         u0, solver_stats = mpc.make_step(x0)
-        print(solver_stats['success'])
-        y_next = simulator.make_step(u0)
-        x0 = estimator.make_step(y_next)
+        ulist = np.zeros((1, 2))
+        for i in range(self.horizon):
+            ulist = np.concatenate(
+                [ulist, np.array(mpc.opt_x_num['_u', i, 0]).reshape(1, -1)])
+        return solver_stats['success'], torch.from_numpy(ulist[1:, :])
 
     def cF(self, pg):
         c = [np.sqrt(2 * np.log((2 * (self.alpha[i]**2)) /
@@ -389,7 +391,7 @@ class ETMPC:
                 np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1))
             zsuc = torch.cat([xsuc, usuc], dim=0).reshape(1, -1).float()
             with torch.no_grad(), gpytorch.settings.fast_pred_var():
-                predictions = likelihoods(*gpmodels(zsuc, zsuc, zsuc))
+                predictions = self.likelihoods(*self.gpmodels(zsuc, zsuc, zsuc))
             varsuc = torch.tensor([predictions[j].variance for j in range(3)])
 
             psi = cp.Variable(3, pos=True)
@@ -406,11 +408,11 @@ class ETMPC:
             prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
             prob_trigger.solve(solver=cp.MOSEK)
             if prob_trigger.status == 'infeasible':
-                return prob_trigger.status
+                return prob_trigger.status, 0
             pg = psi.value
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
-        return np.flip(trigger_values)
+        return prob_trigger.status, np.flip(trigger_values)
 
     def kernelValue(self, x, xprime, alpha, Lambdax):
         return (alpha ** 2) * np.exp(-0.5 * (x - xprime) @ np.linalg.inv(Lambdax) @ (x - xprime))
@@ -424,6 +426,19 @@ class ETMPC:
     def triggerF(self, xstar, xe, trigger_value):
         kmd = self.kernel_metric(xstar, xe)
         return np.all(kmd <= trigger_value)
+
+    def learnD(self, xe, u, xe_next, ze_train, ye_train):
+        ze = torch.cat([xe, u], dim=0).reshape(1, -1).float()
+        with torch.no_grad(), gpytorch.settings.fast_pred_var():
+            predictions = self.likelihoods(
+                *self.gpmodels(ze, ze, ze))
+        vare = torch.tensor([predictions[j].variance for j in range(3)])
+
+        if torch.any(vare >= 0.1):
+            ze_train = torch.cat([ze_train, ze], dim=0)
+            ye_train = torch.cat(
+                [ye_train, (xe_next - xe).reshape(1, -1)], dim=0)
+        return ze_train, ye_train
 
 # set param
 xinit = torch.tensor([1., 1., 1.])
@@ -491,30 +506,48 @@ if __name__ == '__main__':
 
     # implement mpc
     flag_mpc = 1
+
+    ze_train = torch.zeros(1, 5)
+    ye_train = torch.zeros(1, 3)
     while flag_mpc == 1:
         etmpc.set_initial(mpc, simulator, estimator, x0)
-        etmpc.operation(mpc, simulator, estimator, x0)
-        trigger_values = etmpc.triggerValue(mpc)
-        if trigger_values == 'infeasible':
-            break
-        for j in range(horizon):
-            if j == 0:
-                xe = torch.from_numpy(x0).reshape(-1)
-            u = torch.from_numpy(
-                np.array(mpc.opt_x_num['_u', j, 0])).reshape(-1)
-            xe_next = vehicle.errRK4(xe, u)
+        mpc_status, ulist = etmpc.operation(mpc, simulator, estimator, x0)
+        if mpc_status:
+            ulist_pre = ulist
+            trigger_status, trigger_values = etmpc.triggerValue(mpc)
+            if trigger_status == 'infeasible':
+                break
+            for j in range(horizon):
+                if j == 0:
+                    xe = torch.from_numpy(x0).reshape(-1)
+                u = torch.from_numpy(
+                    np.array(mpc.opt_x_num['_u', j, 0])).reshape(-1)
+                xe_next = vehicle.errRK4(xe, u)
 
-            xstar_next = np.array(mpc.opt_x_num['_x', j + 1, 0, 0]).reshape(-1)
-            if j == horizon - 1:
-                flag_mpc = 0
-                break
-            elif etmpc.triggerF(xstar_next, xe_next, trigger_values[j + 1]):
+                ze_train, ye_train = etmpc.learnD(
+                    xe, u, xe_next, ze_train, ye_train)
+
+                xstar_next = np.array(mpc.opt_x_num['_x', j + 1, 0, 0]).reshape(-1)
+                if j == horizon - 1:
+                    flag_mpc = 0
+                    break
+                elif etmpc.triggerF(xstar_next, xe_next, trigger_values[j + 1]):
+                    xe = xe_next
+                else:
+                    trigger_time = j + 1
+                    x0 = xe_next.to('cpu').detach().numpy().reshape(-1, 1)
+                    break
+        else:
+            for j in range(horizon - trigger_time):
+                if j == 0:
+                    xe = torch.from_numpy(x0).reshape(-1)
+                xe_next = vehicle.errRK4(xe, ulist_pre[trigger_time + j])
+
+                ze_train, ye_train = etmpc.learnD(
+                    xe, u, xe_next, ze_train, ye_train)
+
                 xe = xe_next
-                print('a')
-            else:
-                x0 = xe_next.to('cpu').detach().numpy().reshape(-1, 1)
-                print('b')
-                break
+            break
 
 # fig, ax, graphics = do_mpc.graphics.default_plot(mpc.data, figsize=(16, 9))
 # graphics.plot_results()
