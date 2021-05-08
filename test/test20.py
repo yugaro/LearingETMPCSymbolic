@@ -381,6 +381,7 @@ class ETMPC:
         return c
 
     def triggerValue(self, mpc):
+        trigger_values = self.gamma.reshape(1, -1)
         for i in reversed(range(self.horizon)):
             xsuc = torch.from_numpy(
                 np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1))
@@ -395,11 +396,9 @@ class ETMPC:
             psi = cp.Variable(3, pos=True)
             if i == self.horizon - 1:
                 pg = self.gamma
-                trigger_values = self.gamma.reshape(1, -1)
             c = self.cF(pg)
-
             constranits = [cp.quad_form(cp.multiply(self.b, psi) + cp.multiply(self.beta, torch.sqrt(
-                varsuc)), np.linalg.inv(self.Lambdax[j])) <= c[j] ** 2 for j in range(3)]
+                varsuc)) + self.noise * np.ones(3), np.linalg.inv(self.Lambdax[j])) <= (c[j] ** 2) for j in range(3)]
             constranits += [psi[j] <= 1.4 * self.alpha[j] for j in range(3)]
 
             trigger_func = cp.geo_mean(psi)
@@ -432,7 +431,7 @@ class ETMPC:
                 *self.gpmodels(ze, ze, ze))
         vare = torch.tensor([predictions[j].variance for j in range(3)])
 
-        if torch.any(vare >= 0.01):
+        if torch.any(vare >= 0.05):
             ze_train = torch.cat([ze_train, ze], dim=0)
             ye_train = torch.cat(
                 [ye_train, (xe_next - xe).reshape(1, -1)], dim=0)
@@ -463,7 +462,7 @@ Ky = 1
 Ktheta = 1
 gpudate_num = 100
 Xsafe = torch.tensor([[-1.5, 1.5], [-1.5, 1.5], [-1.5, 1.5]])
-b = [1, 1, 1]
+b = [1.05, 1.05, 1.05]
 
 # set param safety game
 etax = 0.1
@@ -492,7 +491,6 @@ gamma_param = 20
 mpctype = 'discrete'
 weightx = np.diag([1, 1, 1])
 horizon = 25
-# x0 = np.array([[3.], [2.], [1.]])
 xr_init = np.array([[0., 0., 0.]])
 
 if __name__ == '__main__':
@@ -505,7 +503,6 @@ if __name__ == '__main__':
     pathe = [torch.zeros(1, 3) for i in range(100)]
     pathc = [torch.zeros(1, 3) for i in range(100)]
     trigger_list = [torch.zeros(1) for i in range(100)]
-    # pathr = [torch.zeros(1, 3) for i in range(100)]
 
     while flag_etmpc == 0:
         print('Iteration:', iteration)
@@ -528,10 +525,11 @@ if __name__ == '__main__':
         while flag_init == 0:
             ze_train = torch.zeros(1, 5)
             ye_train = torch.zeros(1, 3)
-            x0 = 2 * np.random.rand(3, 1) + 2
+            x0 = np.random.rand(3, 1) + 2
             while 1:
                 etmpc.set_initial(mpc, simulator, estimator, x0)
-                mpc_status, ulist = etmpc.operation(mpc, simulator, estimator, x0)
+                mpc_status, ulist = etmpc.operation(
+                    mpc, simulator, estimator, x0)
                 trigger_status, trigger_values = etmpc.triggerValue(mpc)
 
                 if mpc_status and trigger_status == 'optimal':
@@ -648,8 +646,9 @@ if __name__ == '__main__':
                 label='iter:{0}, len:{1}'.format(i + 1, pathc[i].shape[0] - 1))
         for j in range(trigger_list[i].shape[0] - 1):
             ax.scatter(pathc[i][trigger_list[i][j + 1].int(), 0], pathc[i][trigger_list[i][j + 1].int(), 1],
-                       color=cm(i), marker='x', label='trigger')
+                       color=cm(i), marker='x', label='trigger:{0}'.format(trigger_list[i][j + 1].int()))
     ax.plot(pathr[1:, 0], pathr[1:, 1], color='orange', label='reference')
-    ax.legend(bbox_to_anchor=(1.00, 1), loc='upper left', borderaxespad=0)
+    ax.legend(bbox_to_anchor=(1.00, 1),
+              loc='upper left', borderaxespad=0, ncol=2)
     fig.tight_layout()
     fig.savefig('pathc22.pdf')
