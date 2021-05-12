@@ -3,10 +3,10 @@ import numpy as np
 import gpytorch
 import do_mpc
 from casadi import vertcat, SX
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import cvxpy as cp
 torch.manual_seed(1)
-np.random.seed(3)
+np.random.seed(0)
 
 
 class VEHICLE:
@@ -31,8 +31,7 @@ class VEHICLE:
         k3 = self.getrealF(x + self.ts / 2 * k2[2], u)
         k4 = self.getrealF(x + self.ts * k3[2], u)
         x_next = x + self.ts / 6 * \
-            (k1 + 2 * k2 + 2 * k3 + k4) + 2 * \
-            self.noise * torch.rand(3) - self.noise
+            (k1 + 2 * k2 + 2 * k3 + k4)
 
         return x_next
 
@@ -74,17 +73,16 @@ class ExactGPModel(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-def make_data(vehicle, xinit, data_num, v_max, omega_max):
+def make_data(vehicle, xinits, data_num):
     z_train = torch.zeros(1, 5)
     y_train = torch.zeros(1, 3)
     for i in range(data_num):
-        if i == 0:
-            x = xinit
-        if i == data_num / 2:
-            x = -xinit
-        if torch.rand(1) > 1:
+        if i % 10 == 0:
+            j = i // 10
+            x = xinits[j, :]
+        if torch.rand(1) > 0.8:
             v = v_max * torch.rand(1)
-            omega = 2 * omega_max * torch.rand(1) - omega_max
+            omega = omega_max * torch.rand(1)
         else:
             v, omega = vehicle.getPIDCon(x)
         u = torch.tensor([v, omega])
@@ -134,10 +132,6 @@ class safetyGame:
         self.gpmodels = gpmodels
         self.likelihoods = likelihoods
         self.cov = cov
-        self.alpha = [torch.sqrt(
-            self.gpmodels.models[i].covar_module.outputscale) for i in range(y_train.shape[1])]
-        self.Lambdax = [torch.diag(
-            self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2 for i in range(y_train.shape[1])]
         self.b = b
         self.data_num = data_num
         self.noise = noise
@@ -146,14 +140,17 @@ class safetyGame:
         self.Uq = Uq
         self.gamma_param = gamma_param
 
-        self.etax_v = torch.tensor([etax, etax, etax])
-
-        self.beta = torch.tensor([self.set_beta(b[i], gpmodels.train_targets[i], cov[i])
+        self.etax_v = torch.tensor([self.etax, self.etax, self.etax])
+        self.alpha = [torch.sqrt(
+            self.gpmodels.models[i].covar_module.outputscale) for i in range(3)]
+        self.Lambdax = [torch.diag(
+            self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2 for i in range(3)]
+        self.beta = torch.tensor([self.set_beta(b[i], self.gpmodels.train_targets[i], cov[i])
                                   for i in range(3)])
         self.epsilon = torch.tensor([self.set_epsilon(self.alpha[i], self.Lambdax[i])
                                      for i in range(3)])
-        self.gamma = (torch.sqrt(torch.tensor(
-            [2.])) * torch.tensor(self.alpha) - self.epsilon) / self.gamma_param
+        self.gamma = torch.tensor(
+            [(1.41421356 * self.alpha[i] - self.epsilon[i]) / self.gamma_param[i] for i in range(3)])
         self.cout = torch.tensor([self.set_c(self.alpha[i], self.epsilon[i])
                                   for i in range(3)])
         self.cin = torch.tensor([self.set_c(self.alpha[i], self.epsilon[i] + self.gamma[i])
@@ -162,6 +159,8 @@ class safetyGame:
             [torch.diag(self.cout[i] * torch.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], dim=0)
         self.ellin = torch.cat(
             [torch.diag(self.cin[i] * torch.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], dim=0)
+        self.ellout_max = torch.tensor(
+            [self.ellout[:, i].max() for i in range(3)])
         self.ellin_max = torch.tensor(
             [self.ellin[:, i].max() for i in range(3)])
 
@@ -179,31 +178,35 @@ class safetyGame:
 
     def operation(self):
         X0 = torch.arange(self.Xsafe[0, 0],
-                          self.Xsafe[0, 1] + 0.001, self.etax)
+                          self.Xsafe[0, 1] + 0.000001, self.etax)
         X1 = torch.arange(self.Xsafe[1, 0],
-                          self.Xsafe[1, 1] + 0.001, self.etax)
+                          self.Xsafe[1, 1] + 0.000001, self.etax)
         X2 = torch.arange(self.Xsafe[2, 0],
-                          self.Xsafe[2, 1] + 0.001, self.etax)
+                          self.Xsafe[2, 1] + 0.000001, self.etax)
         X_range_min = torch.tensor([X0.min(), X1.min(), X2.min()])
         X_range_max = torch.tensor([X0.max(), X1.max(), X2.max()])
 
         Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
-        for i in range(Q.shape[0]):
-            for j in range(Q.shape[1]):
-                for k in range(Q.shape[2]):
-                    if self.min_max_check(X0[i], X0, dim=0) and self.min_max_check(X1[j], X1, dim=1) and self.min_max_check(X2[k], X2, dim=2):
-                        Q[i][j][k] = 1
+
+        Qind_init = torch.ceil(self.ellout_max / self.etax).int()
+        Q[Qind_init[0]: -Qind_init[0], Qind_init[1]: -
+            Qind_init[1], Qind_init[2]: -Qind_init[2]] = 1
+
+        # print(self.epsilon)
+        # print(self.gamma)
+        # print(self.beta)
+        # print(self.ellout_max)
+        # print(self.ellin_max)
         Qind = torch.nonzero(Q).int()
         Qflag = 1
         print('Start safety game.')
-        print(Qind.shape)
         while Qflag == 1:
             Qdata = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
             Udata = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0], 2])
             Qsafe = Q.clone()
             Qsafeind = Qind.clone()
             for i in range(Qind.shape[0]):
-                print(i)
+                print(i, Qind.shape[0], i / Qind.shape[0] * 100)
                 u_flag = 1
                 for j in range(self.Uq.shape[0]):
                     if j == self.Uq.shape[0] - 1:
@@ -211,7 +214,7 @@ class safetyGame:
                     z_test = torch.tensor(
                         [X0[Qind[i, 0]], X1[Qind[i, 1]], X2[Qind[i, 2]], self.Uq[j, 0], self.Uq[j, 1]]).reshape(1, -1)
                     with torch.no_grad(), gpytorch.settings.fast_pred_var():
-                        predictions = likelihoods(
+                        predictions = self.likelihoods(
                             *self.gpmodels(z_test, z_test, z_test))
                     means = torch.tensor(
                         [predictions[l].mean for l in range(3)])
@@ -446,47 +449,38 @@ class ETMPC:
         return z_train_sum, y_train_sum
 
 
-# set param
-xinit = torch.tensor([1., 1., 1.])
-vr = 2.
+# set param (all)
+vr = 1.
 omegar = 1.
 ur = torch.tensor([vr, omegar])
 v_max = 2
 omega_max = 2
-ts = 0.1
+ts = 0.4
 noise = 0.001
-data_num = 80
+b = [1.07, 1.07, 1.07]
+
+# set param (gp)
+xinits = torch.tensor([[0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, 0.5],
+                       [0.5, -0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5], [0., 0., 0.], [1., 1., 1.]])
+data_num = 100
+gpudate_num = 100
 Kx = 1
 Ky = 1
 Ktheta = 1
-gpudate_num = 100
-Xsafe = torch.tensor([[-1.5, 1.5], [-1.5, 1.5], [-1.5, 1.5]])
-b = [1.05, 1.05, 1.05]
 
-# set param safety game
-etax = 0.1
+# set param (safety game)
+etax = 0.04
 etau = 0.2
-Vq_upper = torch.arange(0., v_max + etau, etau)
-Vq_lower = torch.arange(-v_max, 0., etau)
-Omegaq_upper = torch.arange(0., omega_max + etau, etau)
-Omegaq_lower = torch.arange(-omega_max, 0., etau)
-Vq = torch.zeros(int(2 * omega_max / etau + 1))
-Omegaq = torch.zeros(int(2 * omega_max / etau + 1))
-for i in range(Omegaq.shape[0]):
-    if i % 2 == 0:
-        Vq[i] = Vq_upper[i // 2]
-        Omegaq[i] = Omegaq_upper[i // 2]
-    elif i % 2 == 1:
-        Vq[i] = Vq_lower[Vq_lower.shape[0] - i // 2 - 1]
-        Omegaq[i] = Omegaq_lower[Omegaq_lower.shape[0] - i // 2 - 1]
+Vq = torch.arange(0., v_max + etau, etau)
+Omegaq = torch.arange(0., omega_max + etau, etau)
 Uq = torch.zeros(Vq.shape[0] * Omegaq.shape[0], 2)
 for i in range(Vq.shape[0]):
     for j in range(Omegaq.shape[0]):
-        Uq[i * Omegaq.shape[0] + j, 0] = Vq[i]
-        Uq[i * Omegaq.shape[0] + j, 1] = Omegaq[j]
-gamma_param = 20
+        Uq[i * Omegaq.shape[0] + j, :] = torch.tensor([Vq[i], Omegaq[j]])
+gamma_param = [100, 100, 80]
+Xsafe = torch.tensor([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]])
 
-# set param
+# set param (etmpc)
 mpctype = 'discrete'
 weightx = np.diag([1, 1, 1])
 horizon = 25
@@ -494,160 +488,168 @@ xr_init = np.array([[0., 0., 0.]])
 
 if __name__ == '__main__':
     vehicle = VEHICLE(ts, noise, vr, omegar, Kx, Ky, Ktheta)
-    z_train, y_train = make_data(vehicle, xinit, data_num, v_max, omega_max)
+    z_train, y_train = make_data(vehicle, xinits, data_num)
+    gpmodels, likelihoods, cov = train(
+        z_train, y_train, gpudate_num)
+    safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
+                            b, data_num, noise, etax, Xsafe, Uq, gamma_param)
+    print(safetygame.epsilon)
+    print(safetygame.ellout)
 
-    flag_etmpc = 0
-    flag_trigger = 0
-    iteration = 0
-    pathe = [torch.zeros(1, 3) for i in range(100)]
-    pathc = [torch.zeros(1, 3) for i in range(100)]
-    trigger_list = [torch.zeros(1) for i in range(100)]
+    # safetygame.operation()
 
-    while flag_etmpc == 0:
-        print('Iteration:', iteration)
-        gpmodels, likelihoods, cov = train(
-            z_train, y_train, gpudate_num)
+    # print(safetygame.beta)
+    # print(etmpc.beta)
 
-        safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
-                                b, data_num, noise, etax, Xsafe, Uq, gamma_param)
-        gamma = safetygame.gamma
-        # print(z_train.shape)
-        # print(y_train.shape)
-        # print(gamma)
+    # flag_etmpc = 0
+    # flag_trigger = 0
+    # iteration = 0
+    # pathe = [torch.zeros(1, 3) for i in range(100)]
+    # pathc = [torch.zeros(1, 3) for i in range(100)]
+    # trigger_list = [torch.zeros(1) for i in range(100)]
 
-        etmpc = ETMPC(vehicle, gpmodels, likelihoods, mpctype, noise, gamma,
-                      horizon, weightx, ts, v_max, omega_max, cov, b, data_num)
-        mpc, simulator, estimator = etmpc.setup()
+    # while flag_etmpc == 0:
+    #     print('Iteration:', iteration)
+    #     gpmodels, likelihoods, cov = train(
+    #         z_train, y_train, gpudate_num)
 
-        flag_init = 0
-        flag_asm = 0
-        while flag_init == 0:
-            ze_train = torch.zeros(1, 5)
-            ye_train = torch.zeros(1, 3)
-            x0 = np.random.rand(3, 1) + 2
-            while 1:
-                etmpc.set_initial(mpc, simulator, estimator, x0)
-                mpc_status, ulist = etmpc.operation(
-                    mpc, simulator, estimator, x0)
-                trigger_status, trigger_values = etmpc.triggerValue(mpc)
+    #     safetygame = safetyGame(vehicle, gpmodels, likelihoods, cov,
+    #                             b, data_num, noise, etax, Xsafe, Uq, gamma_param)
+    #     gamma = safetygame.gamma
 
-                if mpc_status and trigger_status == 'optimal':
-                    print('mpc status:', mpc_status)
-                    print('trigger status:', trigger_status)
-                    flag_asm = 1
-                    ulist_pre = ulist
-                    for j in range(horizon + 1):
-                        if j == 0:
-                            xe = torch.from_numpy(x0).reshape(-1)
-                            xr = torch.from_numpy(xr_init).reshape(-1)
-                            pathe[iteration] = torch.cat(
-                                [pathe[iteration], xe.reshape(1, -1)])
-                            pathc[iteration] = torch.cat(
-                                [pathc[iteration], (xr - xe).reshape(1, -1)])
-                        xstar = np.array(
-                            mpc.opt_x_num['_x', j, 0, 0]).reshape(-1)
+    #     etmpc = ETMPC(vehicle, gpmodels, likelihoods, mpctype, noise, gamma,
+    #                   horizon, weightx, ts, v_max, omega_max, cov, b, data_num)
+    #     mpc, simulator, estimator = etmpc.setup()
 
-                        if etmpc.triggerF(xstar, xe, trigger_values[j]):
-                            if j == horizon:
-                                flag_trigger = 1
-                                break
-                            u = torch.from_numpy(
-                                np.array(mpc.opt_x_num['_u', j, 0])).reshape(-1)
+    #     flag_init = 0
+    #     flag_asm = 0
+    #     while flag_init == 0:
+    #         ze_train = torch.zeros(1, 5)
+    #         ye_train = torch.zeros(1, 3)
+    #         x0 = np.random.rand(3, 1) + 2
+    #         while 1:
+    #             etmpc.set_initial(mpc, simulator, estimator, x0)
+    #             mpc_status, ulist = etmpc.operation(
+    #                 mpc, simulator, estimator, x0)
+    #             trigger_status, trigger_values = etmpc.triggerValue(mpc)
 
-                            xe_next = vehicle.errRK4(xe, u)
-                            xr_next = vehicle.realRK4(xr, ur)
+    #             if mpc_status and trigger_status == 'optimal':
+    #                 print('mpc status:', mpc_status)
+    #                 print('trigger status:', trigger_status)
+    #                 flag_asm = 1
+    #                 ulist_pre = ulist
+    #                 for j in range(horizon + 1):
+    #                     if j == 0:
+    #                         xe = torch.from_numpy(x0).reshape(-1)
+    #                         xr = torch.from_numpy(xr_init).reshape(-1)
+    #                         pathe[iteration] = torch.cat(
+    #                             [pathe[iteration], xe.reshape(1, -1)])
+    #                         pathc[iteration] = torch.cat(
+    #                             [pathc[iteration], (xr - xe).reshape(1, -1)])
+    #                     xstar = np.array(
+    #                         mpc.opt_x_num['_x', j, 0, 0]).reshape(-1)
 
-                            pathe[iteration] = torch.cat(
-                                [pathe[iteration], xe_next.reshape(1, -1)])
-                            pathc[iteration] = torch.cat(
-                                [pathc[iteration], (xr_next - xe_next).reshape(1, -1)])
+    #                     if etmpc.triggerF(xstar, xe, trigger_values[j]):
+    #                         if j == horizon:
+    #                             flag_trigger = 1
+    #                             break
+    #                         u = torch.from_numpy(
+    #                             np.array(mpc.opt_x_num['_u', j, 0])).reshape(-1)
 
-                            ze_train, ye_train = etmpc.learnD(
-                                xe, u, xe_next, ze_train, ye_train)
+    #                         xe_next = vehicle.errRK4(xe, u)
+    #                         xr_next = vehicle.realRK4(xr, ur)
 
-                            xe = xe_next
-                            xr = xr_next
-                        else:
-                            trigger_time = j
-                            x0 = xe.to('cpu').detach().numpy().reshape(-1, 1)
-                            print('trigger:', trigger_time)
-                            trigger_list[iteration] = torch.cat(
-                                [trigger_list[iteration], torch.tensor([trigger_time])])
-                            break
-                    if flag_trigger == 1:
-                        flag_init = 1
-                        flag_etmpc = 1
-                        print('Event-triggered mpc was completed')
-                        break
-                else:
-                    if flag_asm == 0:
-                        print('mpc status:', mpc_status)
-                        print('trigger status:', trigger_status)
-                        print('Assumption is not hold.')
-                        break
-                    elif flag_asm == 1:
-                        flag_init = 1
-                        for j in range(horizon - trigger_time):
-                            if j == 0:
-                                xe = torch.from_numpy(x0).reshape(-1)
-                                pathe[iteration] = torch.cat(
-                                    [pathe[iteration], xe.reshape(1, -1)])
-                                pathc[iteration] = torch.cat(
-                                    [pathc[iteration], (xr - xe).reshape(1, -1)])
-                            xe_next = vehicle.errRK4(
-                                xe, ulist_pre[trigger_time + j])
-                            xr_next = vehicle.realRK4(xr, ur)
+    #                         pathe[iteration] = torch.cat(
+    #                             [pathe[iteration], xe_next.reshape(1, -1)])
+    #                         pathc[iteration] = torch.cat(
+    #                             [pathc[iteration], (xr_next - xe_next).reshape(1, -1)])
 
-                            pathe[iteration] = torch.cat(
-                                [pathe[iteration], xe_next.reshape(1, -1)])
-                            pathc[iteration] = torch.cat(
-                                [pathc[iteration], (xr_next - xe_next).reshape(1, -1)])
+    #                         ze_train, ye_train = etmpc.learnD(
+    #                             xe, u, xe_next, ze_train, ye_train)
 
-                            ze_train, ye_train = etmpc.learnD(
-                                xe, ulist_pre[trigger_time + j], xe_next, ze_train, ye_train)
-                            xe = xe_next
-                        x0 = xe.to('cpu').detach().numpy().copy()
-                        z_train_sum, y_train_sum = etmpc.dataCat(
-                            ze_train[1:], ye_train[1:])
-                        z_train = z_train_sum.float().clone()
-                        y_train = y_train_sum.float().clone()
-                        break
-        iteration += 1
+    #                         xe = xe_next
+    #                         xr = xr_next
+    #                     else:
+    #                         trigger_time = j
+    #                         x0 = xe.to('cpu').detach().numpy().reshape(-1, 1)
+    #                         print('trigger:', trigger_time)
+    #                         trigger_list[iteration] = torch.cat(
+    #                             [trigger_list[iteration], torch.tensor([trigger_time])])
+    #                         break
+    #                 if flag_trigger == 1:
+    #                     flag_init = 1
+    #                     flag_etmpc = 1
+    #                     print('Event-triggered mpc was completed')
+    #                     break
+    #             else:
+    #                 if flag_asm == 0:
+    #                     print('mpc status:', mpc_status)
+    #                     print('trigger status:', trigger_status)
+    #                     print('Assumption is not hold.')
+    #                     break
+    #                 elif flag_asm == 1:
+    #                     flag_init = 1
+    #                     for j in range(horizon - trigger_time):
+    #                         if j == 0:
+    #                             xe = torch.from_numpy(x0).reshape(-1)
+    #                             pathe[iteration] = torch.cat(
+    #                                 [pathe[iteration], xe.reshape(1, -1)])
+    #                             pathc[iteration] = torch.cat(
+    #                                 [pathc[iteration], (xr - xe).reshape(1, -1)])
+    #                         xe_next = vehicle.errRK4(
+    #                             xe, ulist_pre[trigger_time + j])
+    #                         xr_next = vehicle.realRK4(xr, ur)
 
-    cm = plt.cm.get_cmap('jet', iteration)
-    fig, ax = plt.subplots(1, 1)
-    for i in range(iteration):
-        ax.scatter(pathe[i][1, 0], pathe[i][1, 1],
-                   color=cm(i), marker='o', label='start')
-        ax.scatter(pathe[i][-1, 0], pathe[i][-1, 1],
-                   color=cm(i), marker='*', label='goal')
-        ax.plot(pathe[i][1:, 0], pathe[i][1:, 1],
-                color=cm(i), label='iter:{0}, len:{1}'.format(i + 1, pathe[i].shape[0]))
-    ax.legend()
-    fig.savefig('pathe3.pdf')
+    #                         pathe[iteration] = torch.cat(
+    #                             [pathe[iteration], xe_next.reshape(1, -1)])
+    #                         pathc[iteration] = torch.cat(
+    #                             [pathc[iteration], (xr_next - xe_next).reshape(1, -1)])
 
-    pathr = torch.zeros(1, 3)
-    for i in range(1000):
-        if i == 0:
-            xr = torch.from_numpy(xr_init).reshape(-1)
-            pathr = torch.cat([pathr, xr.reshape(1, -1)])
-        xr_next = vehicle.realRK4(xr, ur)
-        pathr = torch.cat([pathr, xr.reshape(1, -1)])
-        xr = xr_next
+    #                         ze_train, ye_train = etmpc.learnD(
+    #                             xe, ulist_pre[trigger_time + j], xe_next, ze_train, ye_train)
+    #                         xe = xe_next
+    #                     x0 = xe.to('cpu').detach().numpy().copy()
+    #                     z_train_sum, y_train_sum = etmpc.dataCat(
+    #                         ze_train[1:], ye_train[1:])
+    #                     z_train = z_train_sum.float().clone()
+    #                     y_train = y_train_sum.float().clone()
+    #                     break
+    #     iteration += 1
 
-    fig, ax = plt.subplots(1, 1)
-    for i in range(iteration):
-        ax.scatter(pathc[i][1, 0], pathc[i][1, 1],
-                   color=cm(i), marker='o', label='start')
-        ax.scatter(pathc[i][-1, 0], pathc[i][-1, 1],
-                   color=cm(i), marker='*', label='goal')
-        ax.plot(pathc[i][1:, 0], pathc[i][1:, 1], color=cm(i),
-                label='iter:{0}, len:{1}'.format(i + 1, pathc[i].shape[0] - 1))
-        for j in range(trigger_list[i].shape[0] - 1):
-            ax.scatter(pathc[i][trigger_list[i][j + 1].int(), 0], pathc[i][trigger_list[i][j + 1].int(), 1],
-                       color=cm(i), marker='x', label='trigger:{0}'.format(trigger_list[i][j + 1].int()))
-    ax.plot(pathr[1:, 0], pathr[1:, 1], color='orange', label='reference')
-    ax.legend(bbox_to_anchor=(1.00, 1),
-              loc='upper left', borderaxespad=0, ncol=2)
-    fig.tight_layout()
-    fig.savefig('pathc23.pdf')
+    # cm = plt.cm.get_cmap('jet', iteration)
+    # fig, ax = plt.subplots(1, 1)
+    # for i in range(iteration):
+    #     ax.scatter(pathe[i][1, 0], pathe[i][1, 1],
+    #                color=cm(i), marker='o', label='start')
+    #     ax.scatter(pathe[i][-1, 0], pathe[i][-1, 1],
+    #                color=cm(i), marker='*', label='goal')
+    #     ax.plot(pathe[i][1:, 0], pathe[i][1:, 1],
+    #             color=cm(i), label='iter:{0}, len:{1}'.format(i + 1, pathe[i].shape[0]))
+    # ax.legend()
+    # fig.savefig('pathe3.pdf')
+
+    # pathr = torch.zeros(1, 3)
+    # for i in range(1000):
+    #     if i == 0:
+    #         xr = torch.from_numpy(xr_init).reshape(-1)
+    #         pathr = torch.cat([pathr, xr.reshape(1, -1)])
+    #     xr_next = vehicle.realRK4(xr, ur)
+    #     pathr = torch.cat([pathr, xr.reshape(1, -1)])
+    #     xr = xr_next
+
+    # fig, ax = plt.subplots(1, 1)
+    # for i in range(iteration):
+    #     ax.scatter(pathc[i][1, 0], pathc[i][1, 1],
+    #                color=cm(i), marker='o', label='start')
+    #     ax.scatter(pathc[i][-1, 0], pathc[i][-1, 1],
+    #                color=cm(i), marker='*', label='goal')
+    #     ax.plot(pathc[i][1:, 0], pathc[i][1:, 1], color=cm(i),
+    #             label='iter:{0}, len:{1}'.format(i + 1, pathc[i].shape[0] - 1))
+    #     for j in range(trigger_list[i].shape[0] - 1):
+    #         ax.scatter(pathc[i][trigger_list[i][j + 1].int(), 0], pathc[i][trigger_list[i][j + 1].int(), 1],
+    #                    color=cm(i), marker='x', label='trigger:{0}'.format(trigger_list[i][j + 1].int()))
+    # ax.plot(pathr[1:, 0], pathr[1:, 1], color='slategrey', label='reference')
+    # ax.legend(bbox_to_anchor=(0, 0),
+    #           loc='upper left', borderaxespad=0, ncol=3)
+    # fig.tight_layout()
+    # fig.savefig('pathc23.pdf')

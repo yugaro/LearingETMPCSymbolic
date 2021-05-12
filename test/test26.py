@@ -77,7 +77,11 @@ def make_data(vehicle, xinits, data_num):
         if i % 10 == 0:
             j = i // 10
             x = xinits[j, :]
-        v, omega = vehicle.getPIDCon(x)
+        if torch.rand(1) > 0.9:
+            v = v_max * torch.rand(1)
+            omega = omega_max * torch.rand(1)
+        else:
+            v, omega = vehicle.getPIDCon(x)
         u = torch.tensor([v, omega])
         x_next = vehicle.errRK4(x, u)
 
@@ -111,12 +115,161 @@ def train(z_train, y_train, gpudate_num):
         loss.backward()
         optimizer.step()
     cov = [gpmodels(*gpmodels.train_inputs)
-           [i].covariance_matrix for i in range(y_train.shape[1])]
+           [i].covariance_matrix for i in range(3)]
+    noises = [gpmodels.models[i].likelihood.noise for i in range(3)]
 
     gpmodels.eval()
     likelihoods.eval()
 
-    return gpmodels, likelihoods, cov
+    return gpmodels, likelihoods, cov, noises
+
+
+class safetyGame:
+    def __init__(self, vehicle, gpmodels, likelihoods, cov, b, data_num, noise, etax, Xsafe, Uq, gamma_param):
+        self.vehicle = vehicle
+        self.gpmodels = gpmodels
+        self.likelihoods = likelihoods
+        self.cov = cov
+        self.b = b
+        self.data_num = data_num
+        self.noise = noise
+        self.etax = etax
+        self.Xsafe = Xsafe
+        self.Uq = Uq
+        self.gamma_param = gamma_param
+
+        self.etax_v = torch.tensor([self.etax, self.etax, self.etax])
+        self.alpha = [torch.sqrt(
+            self.gpmodels.models[i].covar_module.outputscale) for i in range(3)]
+        self.Lambdax = [torch.diag(
+            self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2 for i in range(3)]
+        self.beta = torch.tensor([self.set_beta(b[i], self.gpmodels.train_targets[i], cov[i])
+                                  for i in range(3)])
+        self.epsilon = torch.tensor([self.set_epsilon(self.alpha[i], self.Lambdax[i])
+                                     for i in range(3)])
+        self.gamma = torch.tensor(
+            [(1.41421356 * self.alpha[i] - self.epsilon[i]) / self.gamma_param[i] for i in range(3)])
+        self.cout = torch.tensor([self.set_c(self.alpha[i], self.epsilon[i])
+                                  for i in range(3)])
+        self.cin = torch.tensor([self.set_c(self.alpha[i], self.epsilon[i] + self.gamma[i])
+                                 for i in range(3)])
+        self.ellout = torch.cat(
+            [torch.diag(self.cout[i] * torch.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], dim=0)
+        self.ellin = torch.cat(
+            [torch.diag(self.cin[i] * torch.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], dim=0)
+        self.ellout_max = torch.tensor(
+            [self.ellout[:, i].max() for i in range(3)])
+        self.ellin_max = torch.tensor(
+            [self.ellin[:, i].max() for i in range(3)])
+
+    def set_beta(self, b, y, cov):
+        # print(y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y)
+        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y + cov.shape[0])
+
+    def set_epsilon(self, alpha, Lambdax):
+        return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambdax) @ self.etax_v)))
+
+    def set_c(self, alpha, epsilon):
+        return torch.sqrt(2 * torch.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
+
+    def min_max_check(self, x, xlist, dim):
+        return torch.all(x + self.ellout[:, dim] <= torch.max(xlist)) and torch.all(torch.min(xlist) <= x - self.ellout[:, dim])
+
+    def operation(self):
+        X0 = torch.arange(self.Xsafe[0, 0],
+                          self.Xsafe[0, 1] + 0.000001, self.etax)
+        X1 = torch.arange(self.Xsafe[1, 0],
+                          self.Xsafe[1, 1] + 0.000001, self.etax)
+        X2 = torch.arange(self.Xsafe[2, 0],
+                          self.Xsafe[2, 1] + 0.000001, self.etax)
+        X_range_min = torch.tensor([X0.min(), X1.min(), X2.min()])
+        X_range_max = torch.tensor([X0.max(), X1.max(), X2.max()])
+
+        Q = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
+
+        Qind_init = torch.ceil(self.ellout_max / self.etax).int()
+        Q[Qind_init[0]: -Qind_init[0], Qind_init[1]: -
+            Qind_init[1], Qind_init[2]: -Qind_init[2]] = 1
+
+        Qind = torch.nonzero(Q).int()
+        Qflag = 1
+        print('Start safety game.')
+        while Qflag == 1:
+            Qdata = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0]])
+            Udata = torch.zeros([X0.shape[0], X1.shape[0], X2.shape[0], 2])
+            Qsafe = Q.clone()
+            Qsafeind = Qind.clone()
+            for i in range(Qind.shape[0]):
+                # print(i, Qind.shape[0], i / Qind.shape[0] * 100)
+                u_flag = 1
+                for j in range(self.Uq.shape[0]):
+                    if j == self.Uq.shape[0] - 1:
+                        u_flag = 0
+                    z_test = torch.tensor(
+                        [X0[Qind[i, 0]], X1[Qind[i, 1]], X2[Qind[i, 2]], self.Uq[j, 0], self.Uq[j, 1]]).reshape(1, -1)
+                    with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                        predictions = self.likelihoods(
+                            *self.gpmodels(z_test, z_test, z_test))
+                    means = torch.tensor(
+                        [predictions[l].mean for l in range(3)])
+                    variances = torch.tensor(
+                        [predictions[l].variance for l in range(3)])
+
+                    print(z_test)
+                    print(means)
+                    print(torch.sqrt(variances))
+
+                    if j == 1:
+                        return
+
+                    xpre_lower = torch.tensor(
+                        [z_test[0, l] + means[l] - (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.noise + self.etax)
+                         for l in range(3)])
+                    xpre_upper = torch.tensor(
+                        [z_test[0, l] + means[l] + (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.noise + self.etax)
+                         for l in range(3)])
+
+                    Qind_lower = torch.ceil(
+                        (xpre_lower - X_range_min) / self.etax).int()
+                    Qind_upper = ((xpre_upper - X_range_min) //
+                                  self.etax).int()
+
+                    if torch.all(X_range_min <= xpre_lower) and torch.all(xpre_upper <= X_range_max):
+                        if torch.all(Qsafe[Qind_lower[0]:Qind_upper[0] + 1, Qind_lower[1]:Qind_upper[1] + 1, Qind_lower[2]:Qind_upper[2] + 1] == 1):
+                            Qdataind = torch.ceil(
+                                (means - X_range_min) / self.etax).int()
+                            Qdata[Qdataind[0], Qdataind[1], Qdataind[2]] = 1
+                            Udata[Qdataind[0], Qdataind[1],
+                                  Qdataind[2], 0] = self.Uq[j, 0]
+                            Udata[Qdataind[0], Qdataind[1],
+                                  Qdataind[2], 1] = self.Uq[j, 1]
+                            print(Qind[i, 0].item(),
+                                  Qind[i, 1].item(), Qind[i, 2].item())
+                            break
+                        else:
+                            if u_flag == 1:
+                                continue
+                            elif u_flag == 0:
+                                Q[Qind[i, 0], Qind[i, 1], Qind[i, 2]] = 0
+                    else:
+                        if u_flag == 1:
+                            continue
+                        elif u_flag == 0:
+                            Q[Qind[i, 0], Qind[i, 1], Qind[i, 2]] = 0
+            Qind = torch.nonzero(Q).clone()
+            if Qsafeind.shape[0] == Qind.shape[0]:
+                Qflag = 0
+                print('Safety game was completed.')
+                print(Qsafeind.shape[0])
+                print(self.gamma_param)
+                return Qsafe, Qdata, Udata
+                break
+            else:
+                print(Qsafeind.shape[0])
+                print(Qind.shape[0])
+                print('Continue...')
+                continue
+
 
 # set param (all)
 vr = 1.
@@ -124,8 +277,8 @@ omegar = 1.
 ur = torch.tensor([vr, omegar])
 v_max = 2
 omega_max = 2
-ts = 0.1
-noise = 0.001
+ts = 0.4
+noise = 1
 b = [1.07, 1.07, 1.07]
 
 # set param (gp)
@@ -138,7 +291,7 @@ Ky = 1
 Ktheta = 1
 
 # set param (safety game)
-etax = 0.05
+etax = 0.04
 etau = 0.2
 Vq = torch.arange(0., v_max + etau, etau)
 Omegaq = torch.arange(0., omega_max + etau, etau)
@@ -146,8 +299,8 @@ Uq = torch.zeros(Vq.shape[0] * Omegaq.shape[0], 2)
 for i in range(Vq.shape[0]):
     for j in range(Omegaq.shape[0]):
         Uq[i * Omegaq.shape[0] + j, :] = torch.tensor([Vq[i], Omegaq[j]])
-gamma_param = [60, 40, 40]
-Xsafe = torch.tensor([[-1.5, 1.5], [-1.5, 1.5], [-1.5, 1.5]])
+gamma_param = [100, 100, 80]
+Xsafe = torch.tensor([[-1.2, 1.2], [-1.2, 1.2], [-1.2, 1.2]])
 
 # set param (etmpc)
 mpctype = 'discrete'
@@ -158,17 +311,40 @@ xr_init = np.array([[0., 0., 0.]])
 if __name__ == '__main__':
     vehicle = VEHICLE(ts, noise, vr, omegar, Kx, Ky, Ktheta)
     z_train, y_train = make_data(vehicle, xinits, data_num)
-    gpmodels, likelihoods, cov = train(
+    gpmodels, likelihoods, cov, noises = train(
         z_train, y_train, gpudate_num)
 
-    alpha = np.array([torch.sqrt(gpmodels.models[i].covar_module.outputscale).to(
-        'cpu').detach().numpy().astype(np.float64) for i in range(3)])
+    SafetyGame = safetyGame(vehicle, gpmodels, likelihoods, cov,
+                            b, data_num, noise, etax, Xsafe, Uq, gamma_param)
+    SafetyGame.operation()
+
+    alpha = [torch.sqrt(gpmodels.models[i].covar_module.outputscale).to(
+        'cpu').detach().numpy().astype(np.float64).reshape(-1, 1) for i in range(3)]
 
     Lambdax = [(torch.diag(gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)
                            [:3]) ** 2).to('cpu').detach().numpy().astype(np.float64) for i in range(y_train.shape[1])]
 
-    Y = [gpmodels.train_targets[i].to('cpu').detach().numpy().astype(np.float64) for i in range(3)]
+    Lambda = [(torch.diag(gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)) ** 2
+               ).to('cpu').detach().numpy().astype(np.float64) for i in range(y_train.shape[1])]
 
-    safetygame.print_array(alpha, Lambdax[0], Lambdax[1], Lambdax[2],
-                           cov[0].to('cpu').detach().numpy().astype(np.float64), cov[1].to('cpu').detach().numpy().astype(np.float64),
-                           cov[2].to('cpu').detach().numpy().astype(np.float64), Y[0], Y[1], Y[2])
+    cov = [cov[i].to('cpu').detach().numpy().astype(np.float64)
+           for i in range(3)]
+
+    Y = [gpmodels.train_targets[i].to('cpu').detach().numpy().astype(
+        np.float64).reshape(-1, 1) for i in range(3)]
+    ZT = gpmodels.train_inputs[0][0].to('cpu').detach().numpy().astype(
+        np.float64)
+
+    X0 = np.arange(Xsafe[0, 0],
+                   Xsafe[0, 1] + 0.000001, etax).astype(np.float64).reshape(-1, 1)
+    X1 = np.arange(Xsafe[1, 0],
+                   Xsafe[1, 1] + 0.000001, etax).astype(np.float64).reshape(-1, 1)
+    X2 = np.arange(Xsafe[2, 0],
+                   Xsafe[2, 1] + 0.000001, etax).astype(np.float64).reshape(-1, 1)
+
+    Xlist = [X0, X1, X2]
+
+    noises = [noises[i].to('cpu').detach().numpy().copy().astype(np.float64).reshape(-1, 1) for i in range(3)]
+
+    safetygame.print_array(alpha, Lambda, Lambdax, cov, ZT, Y, np.array(b).astype(
+        np.float64).reshape(-1, 1), noise, Xlist, Uq.to('cpu').detach().numpy().astype(np.float64), etax, noises)
