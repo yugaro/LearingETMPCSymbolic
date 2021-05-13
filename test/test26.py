@@ -125,25 +125,25 @@ def train(z_train, y_train, gpudate_num):
 
 
 class safetyGame:
-    def __init__(self, vehicle, gpmodels, likelihoods, cov, b, data_num, noise, etax, Xsafe, Uq, gamma_param):
+    def __init__(self, vehicle, gpmodels, likelihoods, cov, b, data_num, etax, Xsafe, Uq, gamma_param, noises):
         self.vehicle = vehicle
         self.gpmodels = gpmodels
         self.likelihoods = likelihoods
         self.cov = cov
         self.b = b
         self.data_num = data_num
-        self.noise = noise
         self.etax = etax
         self.Xsafe = Xsafe
         self.Uq = Uq
         self.gamma_param = gamma_param
+        self.noises = noises
 
         self.etax_v = torch.tensor([self.etax, self.etax, self.etax])
         self.alpha = [torch.sqrt(
             self.gpmodels.models[i].covar_module.outputscale) for i in range(3)]
         self.Lambdax = [torch.diag(
             self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(-1)[:3]) ** 2 for i in range(3)]
-        self.beta = torch.tensor([self.set_beta(b[i], self.gpmodels.train_targets[i], cov[i])
+        self.beta = torch.tensor([self.set_beta(b[i], self.gpmodels.train_targets[i], cov[i], self.noises[i])
                                   for i in range(3)])
         self.epsilon = torch.tensor([self.set_epsilon(self.alpha[i], self.Lambdax[i])
                                      for i in range(3)])
@@ -162,9 +162,8 @@ class safetyGame:
         self.ellin_max = torch.tensor(
             [self.ellin[:, i].max() for i in range(3)])
 
-    def set_beta(self, b, y, cov):
-        # print(y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y)
-        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(cov.shape[0]) * (self.noise ** 2)) @ y + cov.shape[0])
+    def set_beta(self, b, y, cov, noise):
+        return torch.sqrt(b ** 2 - y @ torch.inverse(cov + torch.eye(cov.shape[0]) * noise) @ y + cov.shape[0])
 
     def set_epsilon(self, alpha, Lambdax):
         return torch.sqrt(2 * (alpha**2) * (1 - torch.exp(-0.5 * self.etax_v @ torch.inverse(Lambdax) @ self.etax_v)))
@@ -215,18 +214,14 @@ class safetyGame:
                     variances = torch.tensor(
                         [predictions[l].variance for l in range(3)])
 
-                    print(z_test)
-                    print(means)
-                    print(torch.sqrt(variances))
-
                     if j == 1:
                         return
 
                     xpre_lower = torch.tensor(
-                        [z_test[0, l] + means[l] - (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.noise + self.etax)
+                        [z_test[0, l] + means[l] - (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.etax)
                          for l in range(3)])
                     xpre_upper = torch.tensor(
-                        [z_test[0, l] + means[l] + (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.noise + self.etax)
+                        [z_test[0, l] + means[l] + (self.b[l] * self.epsilon[l] + self.beta[l] * torch.sqrt(variances[l]) + self.etax)
                          for l in range(3)])
 
                     Qind_lower = torch.ceil(
@@ -278,8 +273,8 @@ ur = torch.tensor([vr, omegar])
 v_max = 2
 omega_max = 2
 ts = 0.4
-noise = 1
-b = [1.07, 1.07, 1.07]
+noise = 0.001
+b = [1.0, 1.0, 1.0]
 
 # set param (gp)
 xinits = torch.tensor([[0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, 0.5],
@@ -299,6 +294,8 @@ Uq = torch.zeros(Vq.shape[0] * Omegaq.shape[0], 2)
 for i in range(Vq.shape[0]):
     for j in range(Omegaq.shape[0]):
         Uq[i * Omegaq.shape[0] + j, :] = torch.tensor([Vq[i], Omegaq[j]])
+
+print(Uq.shape)
 gamma_param = [100, 100, 80]
 Xsafe = torch.tensor([[-1.2, 1.2], [-1.2, 1.2], [-1.2, 1.2]])
 
@@ -315,8 +312,8 @@ if __name__ == '__main__':
         z_train, y_train, gpudate_num)
 
     SafetyGame = safetyGame(vehicle, gpmodels, likelihoods, cov,
-                            b, data_num, noise, etax, Xsafe, Uq, gamma_param)
-    SafetyGame.operation()
+                            b, data_num, etax, Xsafe, Uq, gamma_param, noises)
+    # SafetyGame.operation()
 
     alpha = [torch.sqrt(gpmodels.models[i].covar_module.outputscale).to(
         'cpu').detach().numpy().astype(np.float64).reshape(-1, 1) for i in range(3)]
@@ -332,6 +329,7 @@ if __name__ == '__main__':
 
     Y = [gpmodels.train_targets[i].to('cpu').detach().numpy().astype(
         np.float64).reshape(-1, 1) for i in range(3)]
+
     ZT = gpmodels.train_inputs[0][0].to('cpu').detach().numpy().astype(
         np.float64)
 
@@ -347,4 +345,4 @@ if __name__ == '__main__':
     noises = [noises[i].to('cpu').detach().numpy().copy().astype(np.float64).reshape(-1, 1) for i in range(3)]
 
     safetygame.print_array(alpha, Lambda, Lambdax, cov, ZT, Y, np.array(b).astype(
-        np.float64).reshape(-1, 1), noise, Xlist, Uq.to('cpu').detach().numpy().astype(np.float64), etax, noises)
+        np.float64).reshape(-1, 1), Xlist, Uq.to('cpu').detach().numpy().astype(np.float64), etax, noises, noise)
