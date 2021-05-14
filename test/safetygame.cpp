@@ -12,10 +12,6 @@ using namespace pybind11;
 using namespace Eigen;
 using namespace boost;
 
-// using ma_type = multi_array<int, 3>;
-// using ma_index = ma_type::index;
-// using range = multi_array_types::index_range;
-
 template <typename T>
 using RMatrix = Matrix<T, -1, -1, RowMajor>;
 
@@ -30,16 +26,6 @@ MatrixXd kstarF(double alpha, MatrixXd Lambda, MatrixXd zvec, MatrixXd ZT)
     ZTprime << ZT.col(0).array() - zvec(0, 0), ZT.col(1).array() - zvec(1, 0), ZT.col(2).array() - zvec(2, 0), ZT.col(3).array() - zvec(3, 0), ZT.col(4).array() - zvec(4, 0);
     return pow(alpha, 2.0) * exp((-0.5 * (((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(0) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(1) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(2) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(3) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(4))).array());
 }
-
-// MatrixXd kstarF2(double alpha, MatrixXd Lambda, MatrixXd zvec, MatrixXd ZT)
-// {
-//     MatrixXd kstar(ZT.rows(), 1);
-//     for (int i = 0; i < ZT.rows(); i++){
-//         kstar(i, 0) = kernelF(alpha, Lambda, zvec, ZT.row(i).transpose());
-//     }
-//     return kstar;
-// }
-
 
 template <typename T>
 void operation(vector<Ref<RMatrix<T>>> alpha, vector<Ref<RMatrix<T>>> Lambda, vector<Ref<RMatrix<T>>> Lambdax, vector<Ref<RMatrix<T>>> cov, Ref<RMatrix<T>> ZT, vector<Ref<RMatrix<T>>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xsafe, Ref<RMatrix<T>> Uq, double etax, vector<Ref<RMatrix<T>>> noises, double noise)

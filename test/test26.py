@@ -287,7 +287,7 @@ Ktheta = 1
 
 # set param (safety game)
 etax = 0.04
-etau = 0.2
+etau = 0.25
 Vq = torch.arange(0., v_max + etau, etau)
 Omegaq = torch.arange(0., omega_max + etau, etau)
 Uq = torch.zeros(Vq.shape[0] * Omegaq.shape[0], 2)
@@ -295,7 +295,6 @@ for i in range(Vq.shape[0]):
     for j in range(Omegaq.shape[0]):
         Uq[i * Omegaq.shape[0] + j, :] = torch.tensor([Vq[i], Omegaq[j]])
 
-print(Uq.shape)
 gamma_param = [100, 100, 80]
 Xsafe = torch.tensor([[-1.2, 1.2], [-1.2, 1.2], [-1.2, 1.2]])
 
@@ -339,6 +338,8 @@ if __name__ == '__main__':
                    Xsafe[1, 1] + 0.000001, etax).astype(np.float64).reshape(-1, 1)
     X2 = np.arange(Xsafe[2, 0],
                    Xsafe[2, 1] + 0.000001, etax).astype(np.float64).reshape(-1, 1)
+
+    print(X0.shape[0] * X1.shape[0] * X2.shape[0])
 
     Xlist = [X0, X1, X2]
 
