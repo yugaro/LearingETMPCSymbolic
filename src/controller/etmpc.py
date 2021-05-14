@@ -5,7 +5,7 @@ import do_mpc
 from casadi import vertcat, SX
 import cvxpy as cp
 torch.manual_seed(1)
-np.random.seed(3)
+np.random.seed(1)
 
 class ETMPC:
     def __init__(self, args, gpmodels, likelihoods, covs, noises, gamma):
@@ -131,14 +131,14 @@ class ETMPC:
             with torch.no_grad(), gpytorch.settings.fast_pred_var():
                 predictions = self.likelihoods(
                     *self.gpmodels(zsuc, zsuc, zsuc))
-            varsuc = torch.tensor([predictions[j].variance - self.noises[j]**2 for j in range(3)])
+            varsuc = torch.tensor([predictions[j].variance for j in range(3)])
 
             psi = cp.Variable(3, pos=True)
             if i == self.horizon - 1:
                 pg = self.gamma
             c = self.cF(pg)
             constranits = [cp.quad_form(cp.multiply(self.b, psi) + cp.multiply(self.beta, torch.sqrt(
-                varsuc)) + self.noise * np.ones(3), np.linalg.inv(self.Lambdax[j])) <= (c[j] ** 2) for j in range(3)]
+                varsuc) + self.noise * np.ones(3)), np.linalg.inv(self.Lambdax[j])) <= (c[j] ** 2) for j in range(3)]
             constranits += [psi[j] <= 1.4 * self.alpha[j] for j in range(3)]
 
             trigger_func = cp.geo_mean(psi)

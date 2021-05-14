@@ -2,7 +2,7 @@ import argparse
 
 def set_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ts", type=float, default=0.4)
+    parser.add_argument("--ts", type=float, default=0.2)
     parser.add_argument("--noise", type=float, default=0.001)
     parser.add_argument("--xinit_r", type=float, default=[0., 0., 0.])
     parser.add_argument("--v_r", type=float, default=1.0)
@@ -14,14 +14,13 @@ def set_args():
     parser.add_argument("--Ktheta", type=float, default=1.0)
     parser.add_argument("--etax", type=float, default=0.05)
     parser.add_argument("--etau", type=float, default=0.25)
-    parser.add_argument("--data_num", type=int, default=100)
-    parser.add_argument("--horizon", type=int, default=25)
+    parser.add_argument("--horizon", type=int, default=30)
     parser.add_argument("--gpudate_num", type=int, default=100)
     parser.add_argument("--b", type=float,
-                        default=[1.0, 1.0, 1.0])
+                        default=[1., 1., 1.])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-1.2, 1.2], [-1.2, 1.2], [-1.2, 1.2]])
-    parser.add_argument("--gamma_params", type=float, default=[10., 10., 10.])
+    parser.add_argument("--gamma_params", type=float, default=[15., 15., 15.])
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])

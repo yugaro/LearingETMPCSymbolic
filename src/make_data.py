@@ -6,10 +6,10 @@ torch.manual_seed(1)
 
 def make_data(args, vehicle):
     xinits = torch.tensor([[0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, 0.5],
-                           [0.5, -0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5], [0., 0., 0.], [1., 1., 1.]])
+                           [0.5, -0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5]])
     z_train = torch.zeros(1, 5)
     y_train = torch.zeros(1, 3)
-    for i in range(args.data_num):
+    for i in range(xinits.shape[0] * 10):
         if i % 10 == 0:
             j = i // 10
             x = xinits[j, :]
