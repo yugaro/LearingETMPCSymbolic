@@ -1,6 +1,8 @@
 import torch
 import gpytorch
 import numpy as np
+torch.manual_seed(1)
+np.random.seed(3)
 
 
 class ExactGPModel(gpytorch.models.ExactGP):

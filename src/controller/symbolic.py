@@ -1,5 +1,6 @@
 import numpy as np
-from component.controller import safetygame as sg
+from controller import safetygame as sg
+np.random.seed(3)
 
 
 class Symbolic:
@@ -7,23 +8,23 @@ class Symbolic:
         self.gpmodels = gpmodels
         self.covs = covs
         self.noises = noises
-        self.b = args.b
+        self.b = np.array(args.b)
         self.etax = args.etax
         self.etau = args.etau
-        self.Xsafe = args.Xsafe
+        self.Xsafe = np.array(args.Xsafe)
         self.v_max = args.v_max
         self.omega_max = args.omega_max
         self.gamma_params = args.gamma_params
         self.etax_v = np.array([self.etax, self.etax, self.etax])
-        self.ZT = gpmodels.train_inputs[0][0].to(
+        self.ZT = self.gpmodels.train_inputs[0][0].to(
             'cpu').detach().numpy().astype(np.float64)
-        self.Y = [gpmodels.train_targets[i].to('cpu').detach().numpy(
+        self.Y = [self.gpmodels.train_targets[i].to('cpu').detach().numpy(
         ).reshape(-1, 1).astype(np.float64) for i in range(3)]
-        self.alpha = np.array([np.sqrt(gpmodels.models[i].covar_module.outputscale.to(
+        self.alpha = np.array([np.sqrt(self.gpmodels.models[i].covar_module.outputscale.to(
             'cpu').detach().numpy()).astype(np.float64) for i in range(3)])
-        self.Lambda = [np.diag(gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(
+        self.Lambda = [np.diag(self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(
             -1).to('cpu').detach().numpy() ** 2).astype(np.float64) for i in range(3)]
-        self.Lambdax = [np.diag(gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(
+        self.Lambdax = [np.diag(self.gpmodels.models[i].covar_module.base_kernel.lengthscale.reshape(
             -1)[:3].to('cpu').detach().numpy() ** 2).astype(np.float64) for i in range(3)]
         self.Xqlist = self.setXqlist()
         self.Uq = self.setUq()
@@ -81,7 +82,7 @@ class Symbolic:
                 print('complete.')
             else:
                 Qinit = Q
-                Qind_init = Q
+                Qind_init = Qind
                 print('continue..')
 
 # X0 = np.arange(self.Xsafe[0, 0],

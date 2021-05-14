@@ -1,4 +1,5 @@
 import torch
+torch.manual_seed(1)
 
 
 class Vehicle:
