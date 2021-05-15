@@ -43,16 +43,7 @@ class Symbolic:
             [np.diag(self.cin[i] * np.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], axis=0)
         self.ellin_max = np.array([self.ellin[:, i].max()
                                    for i in range(3)]).astype(np.float64)
-
-        # cg = [
-        #     self.setC(self.alpha[i], self.epsilon[i]) for i in range(3)]
-
-        # ellcg = np.concatenate(
-        #     [np.diag(cg[i] * np.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], axis=0)
-
-        # print('a')
-        # print(ellcg)
-
+                                   
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
