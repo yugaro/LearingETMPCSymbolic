@@ -43,7 +43,7 @@ class Symbolic:
             [np.diag(self.cin[i] * np.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], axis=0)
         self.ellin_max = np.array([self.ellin[:, i].max()
                                    for i in range(3)]).astype(np.float64)
-                                   
+
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
@@ -79,7 +79,7 @@ class Symbolic:
         while sgflag == 1:
             print(Qind_init.shape[0])
             print(self.Uq.shape)
-            # return
+            return
             Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.covs,
                              self.noises, self.ZT, self.Y, self.b, self.Xqlist, self.Uq, self.etax, self.epsilon, self.ellin_max)
             Qindlist = np.nonzero(np.array(Q))

@@ -20,7 +20,7 @@ def set_args():
                         default=[1., 1., 1.])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4]])
-    parser.add_argument("--gamma_params", type=float, default=[500., 500., 500.])
+    parser.add_argument("--gamma_params", type=float, default=[20., 20., 20.])
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])
