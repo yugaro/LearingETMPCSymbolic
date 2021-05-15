@@ -13,6 +13,10 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
     # gp and safety game
     gpmodels, likelihoods, covs, noises = gp.train(args, z_train, y_train)
     symmodel = Symbolic(args, gpmodels, covs, noises)
+    print(symmodel.ellout_max)
+    print(symmodel.ellin_max)
+    print(symmodel.epsilon)
+    print(symmodel.gamma)
     symmodel.safeyGame()
 
     # # etmpc

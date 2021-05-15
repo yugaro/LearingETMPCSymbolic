@@ -37,6 +37,21 @@ class Symbolic:
         self.ellout_max = np.array([self.ellout[:, i].max() for i in range(3)])
         self.gamma = (np.sqrt(2) * self.alpha -
                       self.epsilon) / args.gamma_params
+        self.cin = [
+            self.setC(self.alpha[i], self.epsilon[i] + self.gamma[i]) for i in range(3)]
+        self.ellin = np.concatenate(
+            [np.diag(self.cin[i] * np.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], axis=0)
+        self.ellin_max = np.array([self.ellin[:, i].max()
+                                   for i in range(3)]).astype(np.float64)
+
+        # cg = [
+        #     self.setC(self.alpha[i], self.epsilon[i]) for i in range(3)]
+
+        # ellcg = np.concatenate(
+        #     [np.diag(cg[i] * np.sqrt(self.Lambdax[i])).reshape(1, -1) for i in range(3)], axis=0)
+
+        # print('a')
+        # print(ellcg)
 
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
@@ -70,10 +85,12 @@ class Symbolic:
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
         sgflag = 1
-        print(Qind_init.shape[0])
         while sgflag == 1:
-            Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
-                             self.noises, self.ZT, self.Y, self.b, self.Xqlist, self.Uq, self.etax, self.epsilon)
+            print(Qind_init.shape[0])
+            print(self.Uq.shape)
+            # return
+            Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.covs,
+                             self.noises, self.ZT, self.Y, self.b, self.Xqlist, self.Uq, self.etax, self.epsilon, self.ellin_max)
             Qindlist = np.nonzero(np.array(Q))
             Qind = np.concatenate([Qindlist[0].reshape(-1, 1), Qindlist[1].reshape(-1, 1),
                                    Qindlist[2].reshape(-1, 1)], axis=1).astype(np.float64)

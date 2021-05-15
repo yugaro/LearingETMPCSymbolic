@@ -12,15 +12,15 @@ def set_args():
     parser.add_argument("--Kx", type=float, default=1.0)
     parser.add_argument("--Ky", type=float, default=1.0)
     parser.add_argument("--Ktheta", type=float, default=1.0)
-    parser.add_argument("--etax", type=float, default=0.05)
-    parser.add_argument("--etau", type=float, default=0.25)
+    parser.add_argument("--etax", type=float, default=0.01)
+    parser.add_argument("--etau", type=float, default=0.4)
     parser.add_argument("--horizon", type=int, default=30)
     parser.add_argument("--gpudate_num", type=int, default=100)
     parser.add_argument("--b", type=float,
                         default=[1., 1., 1.])
     parser.add_argument("--Xsafe", type=float,
-                        default=[[-1.2, 1.2], [-1.2, 1.2], [-1.2, 1.2]])
-    parser.add_argument("--gamma_params", type=float, default=[15., 15., 15.])
+                        default=[[-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4]])
+    parser.add_argument("--gamma_params", type=float, default=[500., 500., 500.])
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])

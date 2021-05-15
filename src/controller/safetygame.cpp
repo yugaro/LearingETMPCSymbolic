@@ -39,7 +39,7 @@ int safeF(vector<vector<vector<int>>>Qsafe, MatrixXd Qind_l, MatrixXd Qind_u){
 }
 
 template <typename T>
-vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, Ref<RMatrix<T>> alpha, vector<Ref<RMatrix<T>>> Lambda, vector<Ref<RMatrix<T>>> Lambdax, vector<Ref<RMatrix<T>>> cov, vector<Ref<RMatrix<T>>> noises, Ref<RMatrix<T>> ZT, vector<Ref<RMatrix<T>>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, double etax, Ref<RMatrix<T>> epsilon)
+vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, Ref<RMatrix<T>> alpha, vector<Ref<RMatrix<T>>> Lambda, vector<Ref<RMatrix<T>>> cov, vector<Ref<RMatrix<T>>> noises, Ref<RMatrix<T>> ZT, vector<Ref<RMatrix<T>>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, double etax, Ref<RMatrix<T>> epsilon, Ref<RMatrix<T>> ellin_max)
 {
     cout << "start safety game." << endl;
     MatrixXd xvec(3, 1);
@@ -69,6 +69,7 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
     }
 
     for (int idq = 0; idq < Qind.rows(); idq++){
+        cout << "a" << endl;
         int uflag = 1;
         for (int idu = 0; idu < Uq.rows(); idu++){
             if (idu == Uq.rows() - 1) uflag = 0;
@@ -80,8 +81,8 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
                 means(i, 0) = (kstar[i].transpose() * xi[i])(0, 0);
                 stds(i, 0) = sqrt(kstarstar[i] - (kstar[i].transpose() * (cov[i] + noises[i](0, 0) * MatrixXd::Identity(cov[i].cols(), cov[i].rows())).inverse() * kstar[i])(0, 0));
             }
-            xvecnext_l = xvec + means - (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv);
-            xvecnext_u = xvec + means + (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv);
+            xvecnext_l = xvec + means - (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv + ellin_max);
+            xvecnext_u = xvec + means + (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv + ellin_max);
             int qflag = 0;
             if ((xrange_l.array() <= xvecnext_l.array()).all() == 1 && (xvecnext_u.array() <= xrange_u.array()).all() == 1){
                 Qind_l = ((xvecnext_l - xrange_l) / etax).array() + 1;
