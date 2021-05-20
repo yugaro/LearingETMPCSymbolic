@@ -11,4 +11,3 @@ class VEHICLE:
         self.x = torch.tensor([self.X, self.Y, self.theta])
         self.u = torch.tensor([self.v, self.omega])
         self.z = torch.tensor([self.X, self.Y, self.theta, self.v, self.omega])
-

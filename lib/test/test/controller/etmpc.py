@@ -39,10 +39,6 @@ class ETMPC:
         self.omega_max = args.omega_max
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
-        # self.beta = np.ones(3)
-        # print(self.y_std)
-        # print(y_train.shape)
-        # print(self.beta)
 
     def setBeta(self, b, Y, cov):
         if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:

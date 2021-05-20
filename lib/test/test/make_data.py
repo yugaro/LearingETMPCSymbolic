@@ -25,7 +25,13 @@ def make_data(args, vehicle):
         y_train = np.concatenate(
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
-
+    # np.set_printoptions(precision=3)
+    # print(z_train)
+    # print(np.mean(z_train, axis=0))
+    # print(np.min(z_train, axis=0))
+    # print(np.max(z_train, axis=0))
+    # print(np.std(y_train, axis=0))
+    # print(np.mean(y_train, axis=0))
     return z_train[1:], y_train[1:]
 
 if __name__ == '__main__':
