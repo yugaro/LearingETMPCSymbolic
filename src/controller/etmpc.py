@@ -41,7 +41,7 @@ class ETMPC:
             'store_full_solution': True,
         }
         self.beta = np.array([self.setBeta(
-            self.b[i], self.Y[i], self.covs[i], self.noises[i]) for i in range(3)])
+            self.b[i], self.Y[i], self.covs[i], self.noises[i][0, 0]) for i in range(3)])
 
     def setBeta(self, b, y, cov, noise):
         return np.sqrt(b ** 2 - y @ np.linalg.inv(cov + noise * np.identity(cov.shape[0])) @ y + cov.shape[0])
@@ -56,7 +56,7 @@ class ETMPC:
 
     def muF(self, zvar):
         kstar = self.kstarF(zvar)
-        mu = [kstar[i, :] @ np.linalg.inv(self.covs[i] + self.noises[i] * np.identity(
+        mu = [kstar[i, :] @ np.linalg.inv(self.covs[i] + self.noises[i][0, 0] * np.identity(
             self.covs[i].shape[0])) @ self.Y[i] for i in range(3)]
         return mu
 
@@ -83,14 +83,14 @@ class ETMPC:
         mpc.set_param(**self.setup_mpc)
         mpc.set_objective(lterm=lterm, mterm=mterm)
         mpc.set_rterm(uvar=1)
-        mpc.bounds['lower', '_u', 'uvar'] = - \
-            np.array([[self.v_max], [self.omega_max]])
-        mpc.bounds['upper', '_u', 'uvar'] = np.array(
-            [[self.v_max], [self.omega_max]])
+        # mpc.bounds['lower', '_u', 'uvar'] = - \
+        #     np.array([[self.v_max], [self.omega_max]])
+        # mpc.bounds['upper', '_u', 'uvar'] = np.array(
+        #     [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.1], [0.1], [0.1]])
+            np.array([[0.05], [0.05], [0.05]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.1], [0.1], [0.1]])
+            [[0.05], [0.05], [0.05]])
         mpc.setup()
 
         # set simulator and estimator
@@ -131,14 +131,22 @@ class ETMPC:
             with torch.no_grad(), gpytorch.settings.fast_pred_var():
                 predictions = self.likelihoods(
                     *self.gpmodels(zsuc, zsuc, zsuc))
-            varsuc = torch.tensor([predictions[j].variance for j in range(3)])
-
+            varsuc = np.array([predictions[j].variance.item() for j in range(3)])
             psi = cp.Variable(3, pos=True)
             if i == self.horizon - 1:
                 pg = self.gamma
             c = self.cF(pg)
-            constranits = [cp.quad_form(cp.multiply(self.b, psi) + cp.multiply(self.beta, torch.sqrt(
-                varsuc) + self.noise * np.ones(3)), np.linalg.inv(self.Lambdax[j])) <= (c[j] ** 2) for j in range(3)]
+
+            print('aaa')
+            print(self.beta)
+            print(np.sqrt(varsuc))
+            print(self.beta * np.sqrt(varsuc))
+            print(np.diag(c[0] * np.sqrt(self.Lambdax[0])))
+            print(np.diag(c[1] * np.sqrt(self.Lambdax[1])))
+            print(np.diag(c[2] * np.sqrt(self.Lambdax[2])))
+
+            constranits = [cp.quad_form(cp.multiply(self.b, psi) + cp.multiply(self.beta, np.sqrt(
+                varsuc)), np.linalg.inv(self.Lambdax[j])) <= (c[j] ** 2) for j in range(3)]
             constranits += [psi[j] <= 1.4 * self.alpha[j] for j in range(3)]
 
             trigger_func = cp.geo_mean(psi)
