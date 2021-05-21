@@ -90,9 +90,9 @@ class ETMPC:
         # mpc.bounds['upper', '_u', 'uvar'] = np.array(
         #     [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.01], [0.01], [0.01]])
+            np.array([[0.001], [0.001], [0.001]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.01], [0.01], [0.01]])
+            [[0.001], [0.001], [0.001]])
         mpc.setup()
 
         # set simulator and estimator
@@ -100,7 +100,6 @@ class ETMPC:
         simulator = do_mpc.simulator.Simulator(self.mpcmodel)
         simulator.set_param(t_step=self.ts)
         simulator.setup()
-
         return mpc, simulator, estimator
 
     def set_initial(self, mpc, simulator, estimator, x0):
@@ -123,7 +122,8 @@ class ETMPC:
         return c
 
     def triggerValue(self, mpc):
-        trigger_values = self.gamma.reshape(1, -1)
+        trigger_values = np.array(
+            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
         for i in reversed(range(self.horizon)):
             xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
             usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
@@ -133,10 +133,8 @@ class ETMPC:
 
             psi = cp.Variable(3, pos=True)
             if i == self.horizon - 1:
-                pg = self.gamma
+                pg = np.array([self.gamma, self.gamma, self.gamma])
             c = self.cF(pg)
-            print('aaaaa')
-            print(c)
             constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, psi) + self.beta *
                                         self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= (c[j] ** 2) for j in range(3)]
             constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
@@ -147,6 +145,7 @@ class ETMPC:
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
             pg = psi.value
+            print(psi.value)
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
         return prob_trigger.status, np.flip(trigger_values)

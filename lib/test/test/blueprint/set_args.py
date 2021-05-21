@@ -4,7 +4,7 @@ import argparse
 def set_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ts", type=float, default=0.3)
-    parser.add_argument("--noise", type=float, default=0.1)
+    parser.add_argument("--noise", type=float, default=0.01)
     parser.add_argument("--xinit_r", type=float, default=[0., 0., 0.])
     parser.add_argument("--v_r", type=float, default=1.0)
     parser.add_argument("--omega_r", type=float, default=1.0)
@@ -21,7 +21,7 @@ def set_args():
                         default=[6.0, 4.5, 1.0])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-0.3, 0.3], [-0.3, 0.3], [-0.3, 0.3]])
-    parser.add_argument("--gamma_params", type=float, default=700)
+    parser.add_argument("--gamma_params", type=float, default=1000)
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])

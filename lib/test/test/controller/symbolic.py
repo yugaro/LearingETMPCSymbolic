@@ -46,7 +46,8 @@ class Symbolic:
                              ).reshape(-1).astype(np.float64)
 
         Qinit, Qind_init = self.setQind_init()
-        # print(Qind_init.shape)
+        # print(Qinit.shape)
+        # print(Qinit[0])
         # print(self.etax_v)
 
         # print(Qind_init.shape)
@@ -55,7 +56,7 @@ class Symbolic:
         # print(self.Uq.shape)
         # # print(self.ellin)
         # print(self.epsilon)
-        # print(self.gamma)
+        print(self.gamma)
         # # print(self.alpha)
         # print(self.Lambdax)
         # # print(self.noises)
@@ -63,8 +64,9 @@ class Symbolic:
         # # print(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3] ** 2))
         # # print(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3]) ** 2)
         # # print(self.epsilon)
-        # print(self.ellout)
-        # print(self.ellin)
+        print(self.y_std)
+        print(self.ellout)
+        print(self.ellin)
 
         # print(self.ellout)
         # print(self.Xqlist)
@@ -78,6 +80,10 @@ class Symbolic:
     def setXqlist(self):
         for i in range(3):
             self.Xsafe[i, :] = self.Xsafe[i, :] * self.xqparams[i]
+        print('a')
+        print(np.max(self.Xsafe, axis=1))
+        print(np.min(self.Xsafe, axis=1))
+        print(self.etax_v)
         return [np.arange(self.Xsafe[i, 0],
                           self.Xsafe[i, 1] + 0.000001, self.etax_v[i]).astype(np.float64)for i in range(3)]
 
@@ -93,6 +99,7 @@ class Symbolic:
     def setQind_init(self):
         Qinit = np.zeros([self.Xqlist[0].shape[0],
                           self.Xqlist[1].shape[0], self.Xqlist[2].shape[0]]).astype(np.int)
+        print(Qinit.shape)
         Qind_out = np.ceil(self.ellout / self.etax_v).astype(np.int)
         Qinit[Qind_out[0]: -Qind_out[0], Qind_out[1]: -
               Qind_out[1], Qind_out[2]: -Qind_out[2]] = 1
@@ -113,8 +120,8 @@ class Symbolic:
                                    Qindlist[2].reshape(-1, 1)], axis=1)
             if Qind_init.shape[0] == Qind.shape[0]:
                 sgflag = 0
-                return Q, Qind
                 print('complete.')
+                return Q, Qind
             else:
                 Qinit = Q
                 Qind_init = Qind.astype(np.float64)
