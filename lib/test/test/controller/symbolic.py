@@ -45,18 +45,20 @@ class Symbolic:
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
-        Qinit, Qind_init = self.setQind_init()
+        # Qinit, Qind_init = self.setQind_init()
         # print(Qinit.shape)
         # print(Qinit[0])
         # print(self.etax_v)
 
         # print(Qind_init.shape)
-        # print(self.y_std)
+        print(self.y_std)
+        print(self.covs.shape)
         # print(self.y_mean)
         # print(self.Uq.shape)
         # # print(self.ellin)
         # print(self.epsilon)
-        print(self.gamma)
+        # print(self.alpha)
+        # print(self.gamma)
         # # print(self.alpha)
         # print(self.Lambdax)
         # # print(self.noises)
@@ -64,7 +66,7 @@ class Symbolic:
         # # print(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3] ** 2))
         # # print(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3]) ** 2)
         # # print(self.epsilon)
-        print(self.y_std)
+        # print(self.y_std)
         print(self.ellout)
         print(self.ellin)
 
@@ -80,16 +82,13 @@ class Symbolic:
     def setXqlist(self):
         for i in range(3):
             self.Xsafe[i, :] = self.Xsafe[i, :] * self.xqparams[i]
-        print('a')
-        print(np.max(self.Xsafe, axis=1))
-        print(np.min(self.Xsafe, axis=1))
-        print(self.etax_v)
         return [np.arange(self.Xsafe[i, 0],
                           self.Xsafe[i, 1] + 0.000001, self.etax_v[i]).astype(np.float64)for i in range(3)]
 
     def setUq(self):
-        Vq = np.arange(0., self.v_max + self.etau, self.etau)
-        Omegaq = np.arange(0, self.omega_max + self.etau + 0.000001, self.etau)
+        Vq = np.arange(0., self.v_max + self.etau + 0.000001, self.etau)
+        Omegaq = np.arange(0, self.omega_max +
+                           self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
         for i in range(Vq.shape[0]):
             for j in range(Omegaq.shape[0]):
@@ -99,7 +98,6 @@ class Symbolic:
     def setQind_init(self):
         Qinit = np.zeros([self.Xqlist[0].shape[0],
                           self.Xqlist[1].shape[0], self.Xqlist[2].shape[0]]).astype(np.int)
-        print(Qinit.shape)
         Qind_out = np.ceil(self.ellout / self.etax_v).astype(np.int)
         Qinit[Qind_out[0]: -Qind_out[0], Qind_out[1]: -
               Qind_out[1], Qind_out[2]: -Qind_out[2]] = 1

@@ -5,13 +5,14 @@ np.random.seed(0)
 
 
 def make_data(args, vehicle):
-    xinits = np.array([[0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, 0.5],
-                       [0.5, -0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5]])
+    xinits = np.array([[1, 1, 1], [1, 1, -1], [-1, 1, 1], [-1, 1, -1], [1, -1, 1],
+                       [1, -1, -1], [-1, -1, 1], [-1, -1, -1], [0, 0, 0]])
+    xinits = xinits * 0.5
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
-    for i in range(xinits.shape[0] * 8):
-        if i % 8 == 0:
-            j = i // 8
+    for i in range(xinits.shape[0] * 10):
+        if i % 10 == 0:
+            j = i // 10
             x = xinits[j, :]
         if np.random.rand(1) > 0.8:
             u = np.array([2, 2 * 1]) * \
@@ -25,11 +26,13 @@ def make_data(args, vehicle):
         y_train = np.concatenate(
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
-    # np.set_printoptions(precision=3)
-    # print(z_train)
+    np.set_printoptions(precision=3)
+    print(z_train)
     # print(np.mean(z_train, axis=0))
     # print(np.min(z_train, axis=0))
     # print(np.max(z_train, axis=0))
+    # print(np.min(y_train, axis=0))
+    # print(np.max(y_train, axis=0))
     # print(np.std(y_train, axis=0))
     # print(np.mean(y_train, axis=0))
     return z_train[1:], y_train[1:]

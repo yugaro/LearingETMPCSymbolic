@@ -44,185 +44,52 @@ int contractiveF(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin, d
 int safeF(vector<vector<vector<int>>>Qsafe, MatrixXd Qind_lout, MatrixXd Qind_uout, MatrixXd Qind_lin, MatrixXd Qind_uin, MatrixXd Xqlist0, MatrixXd Xqlist1, MatrixXd Xqlist2, double alpha, MatrixXd Lambda, double epsilon, double gamma){
     MatrixXd xqout(3, 1);
     MatrixXd xqin(3, 1);
-    for (int idq0 = int(Qind_lout(0, 0)); idq0 <= (int(Qind_lout(0, 0)) + int(Qind_uout(0, 0))) / 2 + 1; idq0++){
-        for (int idq1 = int(Qind_lout(1, 0)); idq1 <= (int(Qind_lout(1, 0)) + int(Qind_uout(1, 0))) / 2 + 1; idq1++){
-            for (int idq2 = int(Qind_lout(2, 0)); idq2 <= (int(Qind_lout(2, 0)) + int(Qind_uout(2, 0))) / 2 + 1; idq2++){
-                if (Qsafe[idq0][idq1][idq2] == 0 || Qsafe[int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0][int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1][int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2] == 0){             
-                    // 1
-                    if(idq0 < int(Qind_lin(0, 0)) && idq1 < int(Qind_lin(1, 0)) && idq2 < int(Qind_lin(2, 0))){
+    double conx0;
+    double conx1;
+    double conx2;
+    int recflag0;
+    int recflag1;
+    int recflag2;
+
+    for (int idq0 = int(Qind_lout(0, 0)); idq0 <=  int(Qind_uout(0, 0)); idq0++){
+        recflag0 = 0;
+        if (idq0 < int(Qind_lin(0, 0))){
+            conx0 = Xqlist0(int(Qind_lin(0, 0)), 0);
+            recflag0 = 1;
+        }else if (idq0 > int(Qind_uin(0, 0))){
+            conx0 = Xqlist0(int(Qind_uin(0, 0)), 0);
+            recflag0 = 1;
+        }
+        for (int idq1 = int(Qind_lout(1, 0)); idq1 <= int(Qind_uout(1, 0)); idq1++){
+            recflag1 = 0;
+            if (recflag0 == 1){
+                if (idq1 < int(Qind_lin(1, 0))){
+                    conx1 = Xqlist1(int(Qind_lin(1, 0)), 0);
+                    recflag1 = 1;
+                }else if (idq1 > int(Qind_uin(1, 0))){
+                    conx1 = Xqlist1(int(Qind_uin(1, 0)), 0);
+                    recflag1 = 1;
+                }
+            }
+            for (int idq2 = int(Qind_lout(2, 0)); idq2 <= int(Qind_uout(2, 0)); idq2++){
+                recflag2 = 0;
+                if (recflag0 * recflag1 == 1){
+                    if (idq2 < int(Qind_lin(2, 0))){
+                        conx2 = Xqlist2(int(Qind_lin(2, 0)), 0);
+                        recflag2 = 1;
+                    }else if (idq2 > int(Qind_uin(2, 0))){
+                        conx2 = Xqlist2(int(Qind_uin(2, 0)), 0);
+                        recflag2 = 1;
+                    }
+                }
+                if (Qsafe[idq0][idq1][idq2] == 0){
+                    if (recflag0 * recflag1 * recflag2 == 1){
                         xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
+                        xqin << conx0, conx1, conx2;
                         if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
                             continue;
-                        }else{
-                            return 0;
                         }
-                    }
-
-                    // 2
-                    if(idq0 > int(Qind_uin(0, 0)) && idq1 < int(Qind_lin(1, 0)) && idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 3
-                    if(idq0 < int(Qind_lin(0, 0)) && idq1 > int(Qind_uin(1, 0)) && idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 4
-                    if(idq0 < int(Qind_lin(0, 0)) && idq1 < int(Qind_lin(1, 0)) && idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 5
-                    if(idq0 < int(Qind_lin(0, 0)) && idq1 > int(Qind_uin(1, 0)) && idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 6
-                    if(idq0 > int(Qind_uin(0, 0)) && idq1 < int(Qind_lin(1, 0)) && idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 7
-                    if(idq0 > int(Qind_uin(0, 0)) && idq1 > int(Qind_uin(1, 0)) && idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 8
-                    if(idq0 > int(Qind_uin(0, 0)) && idq1 > int(Qind_uin(1, 0)) && idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 1
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 < int(Qind_lin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 < int(Qind_lin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 2
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 > int(Qind_uin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 < int(Qind_lin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 3
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 < int(Qind_lin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 > int(Qind_uin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 4
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 < int(Qind_lin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 < int(Qind_lin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 5
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 < int(Qind_lin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 > int(Qind_uin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_lin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 6
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 > int(Qind_uin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 < int(Qind_lin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_lin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 7
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 > int(Qind_uin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 > int(Qind_uin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 < int(Qind_lin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_lin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
-
-                    // 8
-                    if(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0 > int(Qind_uin(0, 0)) && int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1 > int(Qind_uin(1, 0)) && int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2 > int(Qind_uin(2, 0))){
-                        xqout << Xqlist0(int(Qind_lout(0, 0)) + int(Qind_uout(0, 0)) - idq0, 0), Xqlist1(int(Qind_lout(1, 0)) + int(Qind_uout(1, 0)) - idq1, 0), Xqlist2(int(Qind_lout(2, 0)) + int(Qind_uout(2, 0)) - idq2, 0);
-                        xqin << Xqlist0(int(Qind_uin(0, 0)), 0), Xqlist1(int(Qind_uin(1, 0)), 0), Xqlist2(int(Qind_uin(2, 0)), 0);
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1){
-                            continue;
-                        }else{
-                            return 0;
-                        }
-                    }
+                    }           
                     return 0;
                 }
             }
@@ -267,7 +134,7 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
         beta(i, 0) = sqrt(pow(b(i, 0), 2.0) - (Y.col(i).transpose() * cov.inverse() * Y.col(i))(0, 0) + cov.rows());
     }
 
-    cout << beta << endl;
+    beta << 1, 1, 1;
 
     for (int idq = 0; idq < Qind.rows(); idq++){
         int uflag = 1;

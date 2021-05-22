@@ -14,10 +14,10 @@ class GP:
         self.whtk = WhiteKernel(noise_level=self.noise)
         self.csk = ConstantKernel(constant_value_bounds=(1e-20, 1e20))
         self.gpr = GaussianProcessRegressor(
-            alpha=1e-6,
+            alpha=1e-4,
             kernel=self.csk * self.rbfk + self.whtk,
             normalize_y=True,
-            n_restarts_optimizer=10,
+            n_restarts_optimizer=100,
             random_state=0
         )
         self.gpr.fit(self.z_train, self.y_train)

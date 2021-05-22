@@ -41,9 +41,12 @@ class ETMPC:
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
     def setBeta(self, b, Y, cov):
-        if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-            return 1
-        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        return 1
+        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        # return 1
+        # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
+        #     return 1
+        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -65,7 +68,6 @@ class ETMPC:
         uvar = self.mpcmodel.set_variable(
             var_type='_u', var_name='uvar', shape=(2, 1))
         zvar = vertcat(xvar, uvar)
-        # mu = self.y_std * self.muF(zvar) + self.y_mean
         mu = self.muF(zvar)
 
         xvar_next = vertcat(xvar[0] + self.y_std[0] * mu[0] + self.y_mean[0],
@@ -88,11 +90,11 @@ class ETMPC:
         # mpc.bounds['lower', '_u', 'uvar'] = - \
         #     np.array([[self.v_max], [self.omega_max]])
         # mpc.bounds['upper', '_u', 'uvar'] = np.array(
-        #     [[self.v_max], [self.omega_max]])
+        #     [[self.v_max / 1.], [self.omega_max / 1.]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.001], [0.001], [0.001]])
+            np.array([[0.01], [0.01], [0.01]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.001], [0.001], [0.001]])
+            [[0.01], [0.01], [0.01]])
         mpc.setup()
 
         # set simulator and estimator
@@ -135,17 +137,18 @@ class ETMPC:
             if i == self.horizon - 1:
                 pg = np.array([self.gamma, self.gamma, self.gamma])
             c = self.cF(pg)
+
             constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, psi) + self.beta *
-                                        self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= (c[j] ** 2) for j in range(3)]
-            constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
+                                        self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
 
             trigger_func = cp.geo_mean(psi)
             prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.MOSEK)
+            prob_trigger.solve(solver=cp.CVXOPT)
+
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
             pg = psi.value
-            print(psi.value)
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
         return prob_trigger.status, np.flip(trigger_values)
@@ -166,7 +169,7 @@ class ETMPC:
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
 
-        if np.any(stdsuc >= 0.3):
+        if np.any(stdsuc >= 0.5):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)
