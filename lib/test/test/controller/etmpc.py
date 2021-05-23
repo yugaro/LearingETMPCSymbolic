@@ -40,12 +40,13 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
+        print(self.ZT.shape)
+        print(self.y_std)
+        print(self.beta)
+
     def setBeta(self, b, Y, cov):
-        return 1
-        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        # return 1
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-        #     return 1
+        return 1
         # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
@@ -89,12 +90,12 @@ class ETMPC:
         mpc.set_rterm(uvar=1)
         # mpc.bounds['lower', '_u', 'uvar'] = - \
         #     np.array([[self.v_max], [self.omega_max]])
-        # mpc.bounds['upper', '_u', 'uvar'] = np.array(
-        #     [[self.v_max / 1.], [self.omega_max / 1.]])
+        mpc.bounds['upper', '_u', 'uvar'] = np.array(
+            [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.01], [0.01], [0.01]])
+            np.array([[0.1], [0.1], [0.1]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.01], [0.01], [0.01]])
+            [[0.1], [0.1], [0.1]])
         mpc.setup()
 
         # set simulator and estimator
@@ -169,7 +170,7 @@ class ETMPC:
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
 
-        if np.any(stdsuc >= 0.5):
+        if np.all(stdsuc <= 0.2):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)

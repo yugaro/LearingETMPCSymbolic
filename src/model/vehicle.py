@@ -1,5 +1,5 @@
-import torch
-torch.manual_seed(1)
+import numpy as np
+np.random.seed(0)
 
 
 class Vehicle:
@@ -13,10 +13,10 @@ class Vehicle:
         self.Ktheta = args.Ktheta
 
     def getRF(self, x, u):
-        f0 = torch.tensor([torch.cos(x[2]) * (u[0])])
-        f1 = torch.tensor([torch.sin(x[2]) * (u[0])])
-        f2 = torch.tensor([(u[1])])
-        return torch.tensor([f0, f1, f2])
+        f0 = np.cos(x[2]) * u[0]
+        f1 = np.sin(x[2]) * u[0]
+        f2 = u[1]
+        return np.array([f0, f1, f2])
 
     def realRK4(self, x, u):
         k1 = self.getRF(x, u)
@@ -28,10 +28,10 @@ class Vehicle:
         return x_next
 
     def getEF(self, x, u):
-        f0 = torch.tensor([u[1] * x[1] - u[0] + self.v_r * torch.cos(x[2])])
-        f1 = torch.tensor([-u[1] * x[0] + self.v_r * torch.sin(x[2])])
-        f2 = torch.tensor([self.omega_r - u[1]])
-        return torch.tensor([f0, f1, f2])
+        f0 = u[1] * x[1] - u[0] + self.v_r * np.cos(x[2])
+        f1 = -u[1] * x[0] + self.v_r * np.sin(x[2])
+        f2 = self.omega_r - u[1]
+        return np.array([f0, f1, f2])
 
     def errRK4(self, x, u):
         k1 = self.getEF(x, u)
@@ -40,11 +40,11 @@ class Vehicle:
         k4 = self.getEF(x + self.ts * k3[2], u)
         x_next = x + self.ts / 6 * \
             (k1 + 2 * k2 + 2 * k3 + k4) + 2 * \
-            self.noise * torch.rand(3) - self.noise
+            self.noise * np.random.rand(3) - self.noise
         return x_next
 
     def getPIDCon(self, x):
-        v = self.v_r * torch.cos(x[2]) + self.Kx * x[0]
+        v = self.v_r * np.cos(x[2]) + self.Kx * x[0]
         omega = self.omega_r + self.v_r * \
-            (self.Ky * x[1] + self.Ktheta * torch.sin(x[2]))
-        return torch.tensor([v, omega])
+            (self.Ky * x[1] + self.Ktheta * np.sin(x[2]))
+        return np.array([v, omega])

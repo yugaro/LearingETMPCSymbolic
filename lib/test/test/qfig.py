@@ -10,17 +10,17 @@ import matplotlib.pyplot as plt
 # mpl.rcParams['axes.ymargin'] = 0
 
 
-Q = np.load('./data/Q.npy')
+Q = np.load('./data/Q3.npy')
 Qindlist = np.nonzero(np.array(Q))
 
 Qind = np.concatenate([Qindlist[0].reshape(-1, 1),
                        Qindlist[1].reshape(-1, 1), Qindlist[2].reshape(-1, 1)], axis=1)
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(111, projection='3d')
-ax.scatter3D(0.00836194 * Qind[:, 0] - 0.31357285, 0.008 * Qind[:, 1] - 0.3,
-             0.00817288 * Qind[:, 2] - 0.30648284, marker=".", linestyle='None')
+ax.scatter3D(0.02141806 * Qind[:, 0] - 0.535451462, 0.0225498 * Qind[:, 1] - 0.563745006,
+             0.01 * Qind[:, 2] - 0.25, marker=".", linestyle='None')
 ax.set_xlabel(r"$X$")
 ax.set_ylabel(r"$Y$")
 ax.set_zlabel(r"$\theta$")
 plt.show()
-# fig.savefig('./image/Qfig.pdf')
+fig.savefig('./image/Qfig3.pdf')

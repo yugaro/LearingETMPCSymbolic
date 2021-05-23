@@ -27,7 +27,6 @@ def make_data(args, vehicle):
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
     np.set_printoptions(precision=3)
-    print(z_train)
     # print(np.mean(z_train, axis=0))
     # print(np.min(z_train, axis=0))
     # print(np.max(z_train, axis=0))

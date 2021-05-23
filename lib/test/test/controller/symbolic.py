@@ -51,8 +51,8 @@ class Symbolic:
         # print(self.etax_v)
 
         # print(Qind_init.shape)
-        print(self.y_std)
-        print(self.covs.shape)
+        # print(self.y_std)
+        # print(self.covs.shape)
         # print(self.y_mean)
         # print(self.Uq.shape)
         # # print(self.ellin)
@@ -67,8 +67,8 @@ class Symbolic:
         # # print(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3]) ** 2)
         # # print(self.epsilon)
         # print(self.y_std)
-        print(self.ellout)
-        print(self.ellin)
+        # print(self.ellout)
+        # print(self.ellin)
 
         # print(self.ellout)
         # print(self.Xqlist)
@@ -107,6 +107,8 @@ class Symbolic:
 
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
+        Qinit = np.load('./data/Q3.npy').astype(np.int).tolist()
+        Qind_init = np.load('./data/Qind3.npy').astype(np.float64)
         sgflag = 1
         while sgflag == 1:
             Q = sg2.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
