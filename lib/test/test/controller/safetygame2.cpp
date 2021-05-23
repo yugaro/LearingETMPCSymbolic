@@ -40,7 +40,6 @@ int contractiveF(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin, d
     }
 }
 
-// , double alpha, MatrixXd Lambda, double epsilon, double gamma
 int safeF(vector<vector<vector<int>>>Qsafe, MatrixXd Qind_lout, MatrixXd Qind_uout, MatrixXd Qind_lin, MatrixXd Qind_uin, MatrixXd Xqlist0, MatrixXd Xqlist1, MatrixXd Xqlist2, double alpha, MatrixXd Lambda, double epsilon, double gamma){
     MatrixXd xqout(3, 1);
     MatrixXd xqin(3, 1);
@@ -107,14 +106,10 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
     MatrixXd kstar(Y.rows(), 1);
     MatrixXd means(3, 1);
     MatrixXd stds(3, 1);
-
     MatrixXd xvecnext_lout(3, 1);
     MatrixXd xvecnext_uout(3, 1);
-
     MatrixXd xvecnext_lin(3, 1);
     MatrixXd xvecnext_uin(3, 1);
-
-
     MatrixXd Qind_lout(3, 1);
     MatrixXd Qind_uout(3, 1);
     MatrixXd Qind_lin(3, 1);
@@ -125,6 +120,7 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
     MatrixXd xrange_u(3, 1);
     MatrixXd trlen(3, 1);
     vector<vector<vector<int>>> Qsafe;
+
     Qsafe = Q;
     xrange_l << Xqlist[0](0, 0), Xqlist[1](0, 0), Xqlist[2](0, 0);
     xrange_u << Xqlist[0](Xqlist[0].rows() - 1, 0), Xqlist[1](Xqlist[1].rows() - 1, 0), Xqlist[2](Xqlist[2].rows() - 1, 0);
