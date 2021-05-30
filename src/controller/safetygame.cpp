@@ -49,7 +49,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
 
     for (int idq0 = int(Qind_lout(0, 0)); idq0 <= int(Qind_uout(0, 0)); idq0++)
     {
-        int　recflag0 = 0;
+        int recflag0 = 0;
         if (idq0 < int(Qind_lin(0, 0)))
         {
             conx0 = Xqlist0(int(Qind_lin(0, 0)), 0);
@@ -62,7 +62,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
         }
         for (int idq1 = int(Qind_lout(1, 0)); idq1 <= int(Qind_uout(1, 0)); idq1++)
         {
-            int　recflag1 = 0;
+            int recflag1 = 0;
             if (recflag0 == 1)
             {
                 if (idq1 < int(Qind_lin(1, 0)))
@@ -78,7 +78,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
             }
             for (int idq2 = int(Qind_lout(2, 0)); idq2 <= int(Qind_uout(2, 0)); idq2++)
             {
-                int　recflag2 = 0;
+                int recflag2 = 0;
                 if (recflag0 * recflag1 == 1)
                 {
                     if (idq2 < int(Qind_lin(2, 0)))

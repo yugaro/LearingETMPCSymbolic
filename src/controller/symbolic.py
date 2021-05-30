@@ -40,7 +40,6 @@ class Symbolic:
         self.gamma = self.setGamma(self.alpha, self.Lambdax, self.zlattice)
         self.cout = self.setC(self.alpha, self.epsilon)
         self.ellout = np.diag(self.cout * np.sqrt(self.Lambdax)).reshape(-1)
-
         self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
@@ -94,6 +93,9 @@ class Symbolic:
             Qind = np.concatenate([Qindlist[0].reshape(-1, 1), Qindlist[1].reshape(-1, 1),
                                    Qindlist[2].reshape(-1, 1)], axis=1)
             if Qind_init.shape[0] == Qind.shape[0]:
+                if Qind.shape[0] == 0:
+                    print('empty.')
+                    return
                 sgflag = 0
                 print('complete.')
                 return Q, Qind
