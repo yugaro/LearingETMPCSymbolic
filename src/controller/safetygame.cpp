@@ -32,33 +32,24 @@ double kernelMetric(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin
     return sqrt(2 * pow(alpha, 2.0) - 2 * kernelF(alpha, Lambda, xqout, xqin));
 }
 
-int contractiveF(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin, double epsilon, double gamma)
+int contractiveF(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin, double gamma)
 {
     double kmd = kernelMetric(alpha, Lambda, xqout, xqin);
-    if (kmd > epsilon + gamma)
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    if (kmd > gamma) return 1;
+    return 0;
 }
 
-int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_uout, MatrixXd Qind_lin, MatrixXd Qind_uin, MatrixXd Xqlist0, MatrixXd Xqlist1, MatrixXd Xqlist2, double alpha, MatrixXd Lambda, double epsilon, double gamma)
+int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_uout, MatrixXd Qind_lin, MatrixXd Qind_uin, MatrixXd Xqlist0, MatrixXd Xqlist1, MatrixXd Xqlist2, double alpha, MatrixXd Lambda, double gamma)
 {
     MatrixXd xqout(3, 1);
     MatrixXd xqin(3, 1);
     double conx0;
     double conx1;
     double conx2;
-    int recflag0;
-    int recflag1;
-    int recflag2;
 
     for (int idq0 = int(Qind_lout(0, 0)); idq0 <= int(Qind_uout(0, 0)); idq0++)
     {
-        recflag0 = 0;
+        int　recflag0 = 0;
         if (idq0 < int(Qind_lin(0, 0)))
         {
             conx0 = Xqlist0(int(Qind_lin(0, 0)), 0);
@@ -71,7 +62,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
         }
         for (int idq1 = int(Qind_lout(1, 0)); idq1 <= int(Qind_uout(1, 0)); idq1++)
         {
-            recflag1 = 0;
+            int　recflag1 = 0;
             if (recflag0 == 1)
             {
                 if (idq1 < int(Qind_lin(1, 0)))
@@ -87,7 +78,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
             }
             for (int idq2 = int(Qind_lout(2, 0)); idq2 <= int(Qind_uout(2, 0)); idq2++)
             {
-                recflag2 = 0;
+                int　recflag2 = 0;
                 if (recflag0 * recflag1 == 1)
                 {
                     if (idq2 < int(Qind_lin(2, 0)))
@@ -107,10 +98,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
                     {
                         xqout << Xqlist0(idq0, 0), Xqlist1(idq1, 0), Xqlist2(idq2, 0);
                         xqin << conx0, conx1, conx2;
-                        if (contractiveF(alpha, Lambda, xqout, xqin, epsilon, gamma) == 1)
-                        {
-                            continue;
-                        }
+                        if (contractiveF(alpha, Lambda, xqout, xqin, gamma) == 1) continue;
                     }
                     return 0;
                 }
@@ -179,13 +167,13 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
             int qflag = 0;
             if ((xrange_l.array() <= xvecnext_lout.array()).all() == 1 && (xvecnext_uout.array() <= xrange_u.array()).all() == 1)
             {
-                Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient(etax_v).array() + 1;
-                Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient(etax_v);
+                Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+                Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
 
-                Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient(etax_v).array() + 1;
-                Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient(etax_v);
+                Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+                Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
 
-                qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, epsilon, gamma);
+                qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
             }
             if (qflag == 1)
             {
@@ -207,3 +195,5 @@ PYBIND11_MODULE(safetygame, m)
     m.doc() = "my test module";
     m.def("operation", &operation<double>, "");
 }
+
+// g++ -O3 -Wall -shared -std=c++14 -undefined dynamic_lookup safetygame.cpp -o safetygame$(python3-config --extension-suffix)

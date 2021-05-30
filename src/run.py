@@ -11,10 +11,10 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, y_train)
-    # Q, Qind = symmodel.safeyGame()
-    # np.save('../data/Q.npy', Q)
-    # np.save('../data/Qind.npy', Qind)
-    # return
+    Q, Qind = symmodel.safeyGame()
+    np.save('../data/Q2.npy', Q)
+    np.save('../data/Qind2.npy', Qind)
+    return
 
     # etmpc
     etmpc = ETMPC(args, gpmodels, y_train, symmodel.gamma)

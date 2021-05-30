@@ -27,26 +27,29 @@ class Symbolic:
         self.Xsafe = np.array(args.Xsafe).astype(np.float64)
         self.v_max = args.v_max
         self.omega_max = args.omega_max
-        self.gamma_params = args.gamma_params
+
         self.xqparams = np.sqrt(np.diag(self.Lambdax)) / \
             np.min(np.sqrt(np.diag(self.Lambdax)))
         self.etax_v = (self.xqparams * self.etax_param).astype(np.float64)
+        self.zlattice = args.zlattice
 
         self.Xqlist = self.setXqlist()
         self.Uq = self.setUq()
         self.epsilon = self.setEpsilon(
             self.alpha, self.Lambdax)
-        self.gamma = (np.sqrt(2) * self.alpha -
-                      self.epsilon) / args.gamma_params
+        self.gamma = self.setGamma(self.alpha, self.Lambdax, self.zlattice)
         self.cout = self.setC(self.alpha, self.epsilon)
         self.ellout = np.diag(self.cout * np.sqrt(self.Lambdax)).reshape(-1)
 
-        self.cin = self.setC(self.alpha, self.epsilon + self.gamma)
+        self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
+
+    def setGamma(self, alpha, Lambdax, zlattice):
+        return np.sqrt(2 * (alpha**2) * (1 - np.exp(-2 * (zlattice ** 2) * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v / 3)))
 
     def setC(self, alpha, epsilon):
         return np.sqrt(2 * np.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
@@ -55,10 +58,10 @@ class Symbolic:
         for i in range(3):
             self.Xsafe[i, :] = self.Xsafe[i, :] * self.xqparams[i]
         return [np.arange(self.Xsafe[i, 0],
-                          self.Xsafe[i, 1] + 0.000001, self.etax_v[i]).astype(np.float64)for i in range(3)]
+                          self.Xsafe[i, 1] + 0.000001, 2 / np.sqrt(3) * self.etax_v[i]).astype(np.float64) for i in range(3)]
 
     def setUq(self):
-        Vq = np.arange(0., self.v_max + self.etau + 0.000001, self.etau)
+        Vq = np.arange(0., self.etau + 0.000001, self.etau)
         Omegaq = np.arange(0, self.omega_max +
                            self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
@@ -70,17 +73,17 @@ class Symbolic:
     def setQind_init(self):
         Qinit = np.zeros([self.Xqlist[0].shape[0],
                           self.Xqlist[1].shape[0], self.Xqlist[2].shape[0]]).astype(np.int)
-        Qind_out = np.ceil(self.ellout / self.etax_v).astype(np.int)
-        Qinit[Qind_out[0]: -Qind_out[0], Qind_out[1]: -
-              Qind_out[1], Qind_out[2]: -Qind_out[2]] = 1
+        Qind_out = np.ceil(self.ellout / (2 / np.sqrt(3) *
+                                          self.etax_v)).astype(np.int)
+        Qinit[Qind_out[0]: -Qind_out[0] + 1,
+              Qind_out[1]: -Qind_out[1] + 1,
+              Qind_out[2]: -Qind_out[2] + 1] = 1
         Qind_init_list = np.nonzero(Qinit)
         return Qinit.tolist(), np.concatenate(
             [Qind_init_list[0].reshape(-1, 1), Qind_init_list[1].reshape(-1, 1), Qind_init_list[2].reshape(-1, 1)], axis=1).astype(np.float64)
 
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
-        Qinit = np.load('../data/Q.npy').astype(np.int).tolist()
-        Qind_init = np.load('../data/Qind.npy').astype(np.float64)
         sgflag = 1
         while sgflag == 1:
             Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
