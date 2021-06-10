@@ -40,14 +40,14 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
-        print(self.ZT.shape)
-        print(self.beta)
-        print(self.y_std)
+        # print(self.ZT.shape)
+        # print(self.beta)
+        # print(self.y_std)
 
     def setBeta(self, b, Y, cov):
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-        return 1
-        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        # return 1
+        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -150,6 +150,33 @@ class ETMPC:
             pg = psi.value
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
+        return prob_trigger.status, np.flip(trigger_values)
+
+    def triggerValue2(self, mpc):
+        trigger_values = np.array(
+            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
+        for i in reversed(range(self.horizon)):
+            psi = cp.Variable(3, pos=True)
+            if i == self.horizon - 1:
+                pg = np.array([self.gamma, self.gamma, self.gamma])
+            c = self.cF(pg)
+
+            constranits = [cp.quad_form(cp.multiply(
+                self.b * self.y_std, psi), np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
+
+            trigger_func = cp.geo_mean(psi)
+            prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
+            prob_trigger.solve(solver=cp.CVXOPT)
+
+            if prob_trigger.status == 'infeasible':
+                return prob_trigger.status, 0
+            pg = psi.value
+            trigger_values = np.concatenate(
+                [trigger_values, psi.value.reshape(1, -1)], axis=0)
+
+            print(psi.value)
+        print(1.41213 * self.alpha)
         return prob_trigger.status, np.flip(trigger_values)
 
     def kernelValue(self, alpha, Lambdax, x, xprime):

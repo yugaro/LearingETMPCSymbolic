@@ -18,7 +18,7 @@ def set_args():
     parser.add_argument("--horizon", type=int, default=15)
     parser.add_argument("--gpudate_num", type=int, default=500)
     parser.add_argument("--b", type=float,
-                        default=[1.0, 1.0, 1.0])
+                        default=[1, 1, 1])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4]])
     parser.add_argument("--zlattice", type=int, default=1)
