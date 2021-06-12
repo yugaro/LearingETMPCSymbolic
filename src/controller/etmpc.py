@@ -39,7 +39,6 @@ class ETMPC:
         self.omega_max = args.omega_max
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
-
         # print(self.ZT.shape)
         # print(self.beta)
         # print(self.y_std)
