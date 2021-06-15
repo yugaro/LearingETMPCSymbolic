@@ -41,8 +41,7 @@ class ETMPC:
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
         # print(self.ZT.shape)
         # print(self.beta)
-        # print(self.y_std)
-
+        
     def setBeta(self, b, Y, cov):
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
         # return 1
