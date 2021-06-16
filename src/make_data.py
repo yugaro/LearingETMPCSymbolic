@@ -1,18 +1,19 @@
 import numpy as np
 from blueprint.set_args import set_args
 from model.vehicle import Vehicle
+import matplotlib.pyplot as plt
 np.random.seed(0)
 
 
 def make_data(args, vehicle):
-    xinits = np.array([[1, 1, 1], [-1, 1, 1], [1, -1, 1], [1, 1, -1], [-1, -1, 1],
-                       [-1, 1, -1], [1, -1, -1], [-1, -1, -1], [0, 0, 0]])
-    xinits = xinits * 0.5
+    xinits = np.array([[0.5, 0.5, 0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, -0.5, 0.5],
+                       [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [0, 0, 0], [1, 1, 1], [2, 2, 2]])
+    xinits = xinits
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
-    for i in range(xinits.shape[0] * 15):
-        if i % 15 == 0:
-            j = i // 15
+    for i in range(xinits.shape[0] * 11):
+        if i % 11 == 0:
+            j = i // 11
             x = xinits[j, :]
         if np.random.rand(1) > 0.8:
             u = np.array([2, 2 * 1]) * \
@@ -26,6 +27,20 @@ def make_data(args, vehicle):
         y_train = np.concatenate(
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(y_train[1:, 0], marker='*')
+    ax.grid(linestyle='-')
+    fig.savefig('../image/trajectoryx.pdf')
+
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(y_train[1:, 1], marker='*')
+    ax.grid(linestyle='-')
+    fig.savefig('../image/trajectoryy.pdf')
+
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(y_train[1:, 2], marker='*')
+    ax.grid(linestyle='-')
+    fig.savefig('../image/trajectorytheta.pdf')
     return z_train[1:], y_train[1:]
 
 

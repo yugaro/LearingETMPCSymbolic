@@ -141,6 +141,9 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
         beta(i, 0) = sqrt(pow(b(i, 0), 2.0) - (Y.col(i).transpose() * cov.inverse() * Y.col(i))(0, 0) + cov.rows());
     }
 
+    // cout << beta << endl;
+    // return Q;
+
     beta << 1, 1, 1;
 
     for (int idq = 0; idq < Qind.rows(); idq++)

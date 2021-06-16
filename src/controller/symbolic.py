@@ -44,10 +44,6 @@ class Symbolic:
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
-        print(self.alpha)
-        print(self.Lambdax)
-        print(self.ellin)
-
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 

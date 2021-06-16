@@ -20,20 +20,22 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
     # etmpc
     etmpc = ETMPC(args, gpmodels, y_train, symmodel.gamma)
     mpc, simulator, estimator = etmpc.setUp()
-    trigger_status, trigger_values = etmpc.triggerValue2(mpc)
-    print(trigger_values)
-    return
+    trigger_status, trigger_values2 = etmpc.triggerValue2(mpc)
+
     flag_asm = 0
     while 1:
         ze_train = np.zeros((1, 5))
         ye_train = np.zeros((1, 3))
-        x0 = np.array([np.random.rand(1) + 4.25,
-                       np.random.rand(1) + 4.25, 3.141592 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 1,
+                       np.random.rand(1) + 1, 1 * np.random.rand(1)])
         while 1:
             etmpc.set_initial(mpc, simulator, estimator, x0)
             mpc_status, ulist = etmpc.operation(
                 mpc, simulator, estimator, x0)
-            trigger_status, trigger_values = etmpc.triggerValue(mpc)
+            trigger_status, trigger_values3 = etmpc.triggerValue3(
+                mpc, trigger_values2)
+            # print(trigger_values3)
+            # trigger_status, trigger_values = etmpc.triggerValue(mpc)
 
             print('mpc status:', mpc_status)
             print('trigger status:', trigger_status)
@@ -49,7 +51,7 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
                     xstar = np.array(
                         mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
 
-                    if etmpc.triggerF(xstar, xe, trigger_values[i, :]):
+                    if etmpc.triggerF(xstar, xe, trigger_values3[i, :]):
                         if i == args.horizon:
                             return [1, traj_data, trigger_data]
                         u = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)

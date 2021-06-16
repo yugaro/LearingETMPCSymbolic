@@ -39,13 +39,12 @@ class ETMPC:
         self.omega_max = args.omega_max
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
-        # print(self.ZT.shape)
-        # print(self.beta)
-        
+
     def setBeta(self, b, Y, cov):
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-        # return 1
-        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        return 1
+        # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -172,10 +171,33 @@ class ETMPC:
             pg = psi.value
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
-
-            print(psi.value)
-        print(1.41213 * self.alpha)
         return prob_trigger.status, np.flip(trigger_values)
+
+    def triggerValue3(self, mpc, trigger_values2):
+        trigger_values3 = np.zeros((1, 3))
+        for i in range(self.horizon):
+            xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
+            usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
+            zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
+            _, stdsuc = self.gpmodels.predict(zsuc)
+
+            xi = cp.Variable(3, pos=True)
+            c = self.cF(trigger_values2[i + 1, :])
+            print(c)
+            constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+            constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
+
+            trigger_func = cp.geo_mean(xi)
+            prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
+            prob_trigger.solve(solver=cp.CVXOPT)
+
+            if prob_trigger.status == 'infeasible':
+                return prob_trigger.status, 0
+
+            # print(xi.value)
+            trigger_values3 = np.concatenate(
+                [trigger_values3, xi.value.reshape(1, -1)], axis=0)
+        return prob_trigger.status, trigger_values3
 
     def kernelValue(self, alpha, Lambdax, x, xprime):
         return (alpha ** 2) * np.exp(-0.5 * (x - xprime) @ np.linalg.inv(Lambdax) @ (x - xprime))
