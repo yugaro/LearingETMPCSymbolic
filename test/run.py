@@ -12,6 +12,8 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
     gpmodels = GP(z_train, y_train, args.noise)
     z_test = np.array([[1, 1, 1, 1, 0]])
     print(gpmodels.predict(z_test))
+    print(vehicle.errRK4(
+        np.array([1, 1, 1]), np.array([1, 0])) - np.array([1, 1, 1]))
     # print(y_train)
     # print(gpmodels.gpr[0].y_train_)
     # print(gpmodels.gpr[1].X_train_)

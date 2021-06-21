@@ -5,19 +5,41 @@ np.random.seed(3)
 
 class Symbolic:
     def __init__(self, args, gpmodels, y_train):
+        # self.gpmodels = gpmodels
+        # self.ZT = self.gpmodels.gpr[0].X_train_.astype(np.float64)
+        # self.Y = [self.gpmodels.gpr[i].y_train_.astype(np.float64) for i in range(3)]
+        # self.covs = [self.gpmodels.gpr[i].L_ @ self.gpmodels.gpr[i].L_.T.astype(
+        #     np.float64) for i in range(3)]
+        # self.alpha = [np.sqrt(
+        #     np.exp(gpmodels.gpr[i].kernel_.theta[0])).astype(np.float64) for i in range(3)]
+        # self.Lambda = [np.diag(
+        #     np.exp(gpmodels.gpr[i].kernel_.theta[1:1 + 5]) ** 2).astype(np.float64) for i in range(3)]
+        # self.Lambdax = [np.diag(
+        #     np.exp(gpmodels.gpr[i].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64) for i in range(3)]
+        # self.noises = [np.exp(
+        #     gpmodels.gpr[i].kernel_.theta[-1]).astype(np.float64) for i in range(3)]
+
+        # self.b = np.array(args.b).astype(np.float64)
+        # self.etax_param = args.etax_param
+        # self.etau = args.etau
+        # self.Xsafe = np.array(args.Xsafe).astype(np.float64)
+        # self.v_max = args.v_max
+        # self.omega_max = args.omega_max
+
+        # self.etax_v = np.array(
+        #     [args.etax_param, args.etax_param, args.etax_param]).astype(np.float64)
+        # self.epsilon = [self.setEpsilon(
+        #     self.alpha[i], self.Lambdax[i]) for i in range(3)]
+        # self.zlattice = args.zlattice
+        # self.gamma = [self.setGamma(self.alpha[i], self.Lambdax[i], self.zlattice) for i in range(3)]
         self.gpmodels = gpmodels
-        self.ZT = self.gpmodels.gpr[0].X_train_.astype(np.float64)
-        self.Y = [self.gpmodels.gpr[i].y_train_.astype(np.float64) for i in range(3)]
-        self.covs = [self.gpmodels.gpr[i].L_ @ self.gpmodels.gpr[i].L_.T.astype(
-            np.float64) for i in range(3)]
-        self.alpha = [np.sqrt(
-            np.exp(gpmodels.gpr[i].kernel_.theta[0])).astype(np.float64) for i in range(3)]
-        self.Lambda = [np.diag(
-            np.exp(gpmodels.gpr[i].kernel_.theta[1:1 + 5]) ** 2).astype(np.float64) for i in range(3)]
-        self.Lambdax = [np.diag(
-            np.exp(gpmodels.gpr[i].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64) for i in range(3)]
-        self.noises = [np.exp(
-            gpmodels.gpr[i].kernel_.theta[-1]).astype(np.float64) for i in range(3)]
+        self.ZT = self.gpmodels.gpr.X_train_.astype(np.float64)
+        self.Y = self.gpmodels.gpr.y_train_.astype(np.float64)
+        self.covs = self.gpmodels.gpr.L_ @ self.gpmodels.gpr.L_.T.astype(np.float64)
+        self.alpha = np.sqrt(np.exp(gpmodels.gpr.kernel_.theta[0])).astype(np.float64)
+        self.Lambda = np.diag(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 5]) ** 2).astype(np.float64)
+        self.Lambdax = np.diag(np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3]) ** 2).astype(np.float64)
+        self.noises = np.exp(gpmodels.gpr.kernel_.theta[-1]).astype(np.float64)
 
         self.b = np.array(args.b).astype(np.float64)
         self.etax_param = args.etax_param
@@ -28,10 +50,9 @@ class Symbolic:
 
         self.etax_v = np.array(
             [args.etax_param, args.etax_param, args.etax_param]).astype(np.float64)
-        self.epsilon = [self.setEpsilon(
-            self.alpha[i], self.Lambdax[i]) for i in range(3)]
+        self.epsilon = self.setEpsilon(self.alpha, self.Lambdax)
         self.zlattice = args.zlattice
-        self.gamma = [self.setGamma(self.alpha[i], self.Lambdax[i], self.zlattice) for i in range(3)]
+        self.gamma = self.setGamma(self.alpha, self.Lambdax, self.zlattice)
 
         print(self.epsilon)
         print(self.gamma)
@@ -41,8 +62,8 @@ class Symbolic:
     #     self.epsilon = self.setEpsilon(
     #         self.alpha, self.Lambdax)
     #     self.gamma = self.setGamma(self.alpha, self.Lambdax, self.zlattice)
-        self.cout = [self.setC(self.alpha[i], self.epsilon[i]) for i in range(3)]
-        self.ellout = [np.diag(self.cout[i] * np.sqrt(self.Lambdax[i])).reshape(-1) for i in range(3)]
+        self.cout = self.setC(self.alpha, self.epsilon)
+        self.ellout = np.diag(self.cout * np.sqrt(self.Lambdax)).reshape(-1)
 
         print(self.cout)
         print(self.ellout)
