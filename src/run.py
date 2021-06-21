@@ -26,15 +26,15 @@ def iterLearning(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_
     while 1:
         ze_train = np.zeros((1, 5))
         ye_train = np.zeros((1, 3))
-        x0 = np.array([np.random.rand(1) + 1,
-                       np.random.rand(1) + 1, 1 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 2,
+                       np.random.rand(1) + 2, 2 * np.random.rand(1)])
         while 1:
             etmpc.set_initial(mpc, simulator, estimator, x0)
             mpc_status, ulist = etmpc.operation(
                 mpc, simulator, estimator, x0)
             trigger_status, trigger_values3 = etmpc.triggerValue3(
                 mpc, trigger_values2)
-            # print(trigger_values3)
+            print(trigger_values3)
             # trigger_status, trigger_values = etmpc.triggerValue(mpc)
 
             print('mpc status:', mpc_status)

@@ -40,11 +40,15 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
+        print(self.Lambdax)
+        print(self.alpha)
+        print(self.y_std)
+
     def setBeta(self, b, Y, cov):
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-        return 1
+        # return 1
         # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -119,49 +123,24 @@ class ETMPC:
                                 (2 * (self.alpha**2) - (pg[i]**2)))) for i in range(3)]
         return c
 
-    def triggerValue(self, mpc):
-        trigger_values = np.array(
-            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
-        for i in reversed(range(self.horizon)):
-            xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
-            usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
-            zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
-
-            _, stdsuc = self.gpmodels.predict(zsuc)
-
-            psi = cp.Variable(3, pos=True)
-            if i == self.horizon - 1:
-                pg = np.array([self.gamma, self.gamma, self.gamma])
-            c = self.cF(pg)
-
-            constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, psi) + self.beta *
-                                        self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
-            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
-
-            trigger_func = cp.geo_mean(psi)
-            prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.CVXOPT)
-
-            if prob_trigger.status == 'infeasible':
-                return prob_trigger.status, 0
-            pg = psi.value
-            trigger_values = np.concatenate(
-                [trigger_values, psi.value.reshape(1, -1)], axis=0)
-        return prob_trigger.status, np.flip(trigger_values)
-
     def triggerValue2(self, mpc):
         trigger_values = np.array(
             [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
+
+        print(self.gamma)
+        print(self.alpha)
+        print(np.sqrt(2 * np.log((2 * (self.alpha ** 2)) / (2 * (self.alpha ** 2) - (self.gamma ** 2)))))
         for i in reversed(range(self.horizon)):
-            psi = cp.Variable(3, pos=True)
             if i == self.horizon - 1:
                 pg = np.array([self.gamma, self.gamma, self.gamma])
             c = self.cF(pg)
 
+            print(c)
+
+            psi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
                 self.b * self.y_std, psi), np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
-            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
-
+            constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
             trigger_func = cp.geo_mean(psi)
             prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
             prob_trigger.solve(solver=cp.CVXOPT)
@@ -169,6 +148,7 @@ class ETMPC:
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
             pg = psi.value
+
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
         return prob_trigger.status, np.flip(trigger_values)
@@ -183,8 +163,8 @@ class ETMPC:
 
             xi = cp.Variable(3, pos=True)
             c = self.cF(trigger_values2[i + 1, :])
-            print(c)
-            constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+            constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, xi) + self.beta *
+                                        self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
             constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
 
             trigger_func = cp.geo_mean(xi)
@@ -194,7 +174,6 @@ class ETMPC:
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
 
-            # print(xi.value)
             trigger_values3 = np.concatenate(
                 [trigger_values3, xi.value.reshape(1, -1)], axis=0)
         return prob_trigger.status, trigger_values3
@@ -230,3 +209,33 @@ class ETMPC:
 
 # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
         # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+
+    # def triggerValue(self, mpc):
+    #     trigger_values = np.array(
+    #         [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
+    #     for i in reversed(range(self.horizon)):
+    #         xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
+    #         usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
+    #         zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
+
+    #         _, stdsuc = self.gpmodels.predict(zsuc)
+
+    #         psi = cp.Variable(3, pos=True)
+    #         if i == self.horizon - 1:
+    #             pg = np.array([self.gamma, self.gamma, self.gamma])
+    #         c = self.cF(pg)
+
+    #         constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, psi) + self.beta *
+    #                                     self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+    #         constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
+
+    #         trigger_func = cp.geo_mean(psi)
+    #         prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
+    #         prob_trigger.solve(solver=cp.CVXOPT)
+
+    #         if prob_trigger.status == 'infeasible':
+    #             return prob_trigger.status, 0
+    #         pg = psi.value
+    #         trigger_values = np.concatenate(
+    #             [trigger_values, psi.value.reshape(1, -1)], axis=0)
+    #     return prob_trigger.status, np.flip(trigger_values)
