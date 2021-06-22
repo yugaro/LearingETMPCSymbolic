@@ -29,7 +29,7 @@ class Symbolic:
         self.omega_max = args.omega_max
 
         self.xqparams = np.sqrt(np.diag(self.Lambdax)) / \
-            np.min(np.sqrt(np.diag(self.Lambdax)))
+            np.max(np.sqrt(np.diag(self.Lambdax)))
         self.etax_v = (self.xqparams * self.etax_param).astype(np.float64)
         self.zlattice = args.zlattice
 
@@ -44,13 +44,11 @@ class Symbolic:
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
-        print(self.ellin)
-
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
     def setGamma(self, alpha, Lambdax, zlattice):
-        return np.sqrt(2 * (alpha**2) * (1 - np.exp(-2 * (zlattice ** 2) * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v / 3)))
+        return np.sqrt(2 * (alpha**2) * (1 - np.exp(-(2 * (zlattice ** 2) / 3) * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
     def setC(self, alpha, epsilon):
         return np.sqrt(2 * np.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
@@ -105,3 +103,59 @@ class Symbolic:
                 Qinit = Q
                 Qind_init = Qind.astype(np.float64)
                 print('continue..')
+
+# alpha0 = np.sqrt(
+#             np.exp(gpmodels.gpr[0].kernel_.theta[0]))
+
+#         alpha1 = np.sqrt(
+#             np.exp(gpmodels.gpr[1].kernel_.theta[0]))
+
+#         alpha2 = np.sqrt(
+#             np.exp(gpmodels.gpr[2].kernel_.theta[0]))
+
+#         Lambda0 = np.diag(np.exp(gpmodels.gpr[0].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64)
+
+#         Lambda1 = np.diag(np.exp(gpmodels.gpr[1].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64)
+
+#         Lambda2 = np.diag(np.exp(gpmodels.gpr[2].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64)
+
+#         print('lambda')
+
+#         print(Lambda0)
+
+#         print(Lambda1)
+
+#         print(Lambda2)
+
+#         gamma0 = self.setGamma(np.sqrt(
+#             np.exp(gpmodels.gpr[0].kernel_.theta[0])), np.diag(np.exp(gpmodels.gpr[0].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64),
+# self.zlattice)
+
+#         gamma1 = self.setGamma(np.sqrt(
+#             np.exp(gpmodels.gpr[1].kernel_.theta[0])), np.diag(np.exp(gpmodels.gpr[1].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64),
+# self.zlattice)
+
+#         gamma2 = self.setGamma(np.sqrt(
+#             np.exp(gpmodels.gpr[2].kernel_.theta[0])), np.diag(np.exp(gpmodels.gpr[2].kernel_.theta[1:1 + 3]) ** 2).astype(np.float64),
+# self.zlattice)
+
+#         print('gamma')
+#         print(gamma0)
+#         print(gamma1)
+#         print(gamma2)
+
+#         cin0 = self.setC(alpha0, gamma0)
+#         cin1 = self.setC(alpha1, gamma1)
+#         cin2 = self.setC(alpha2, gamma2)
+
+#         ellin0 = np.diag(cin0 * np.sqrt(Lambda0)
+#                          ).reshape(-1).astype(np.float64)
+#         ellin1 = np.diag(cin1 * np.sqrt(Lambda1)
+#                          ).reshape(-1).astype(np.float64)
+#         ellin2 = np.diag(cin2 * np.sqrt(Lambda2)
+#                          ).reshape(-1).astype(np.float64)
+
+#         print('ellin')
+#         print(ellin0)
+#         print(ellin1)
+#         print(ellin2)

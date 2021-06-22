@@ -7,7 +7,7 @@ np.random.seed(0)
 
 def make_data(args, vehicle):
     xinits = np.array([[0.5, 0.5, 0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, -0.5], [-0.5, -0.5, 0.5],
-                       [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [1, 1, 1], [2, 2, 1]])
+                       [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [1, 1, 1], [1.5, 1.5, 1.5]])
     xinits = xinits * 2
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
@@ -15,7 +15,7 @@ def make_data(args, vehicle):
         if i % 10 == 0:
             j = i // 10
             x = xinits[j, :]
-        if np.random.rand(1) > 0.8:
+        if np.random.rand(1) > 1.8:
             u = np.array([2, 2 * 1]) * \
                 np.random.rand(1) - np.array([0, 1])
         else:

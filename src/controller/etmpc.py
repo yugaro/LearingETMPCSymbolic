@@ -8,6 +8,8 @@ np.random.seed(0)
 class ETMPC:
     def __init__(self, args, gpmodels, y_train, gamma):
         self.gpmodels = gpmodels
+        print(self.gpmodels.gpr.kernel_)
+        print(self.gpmodels.gpr.kernel_.theta)
         self.y_mean = np.mean(y_train, axis=0)
         self.y_std = np.std(y_train, axis=0)
         self.ZT = self.gpmodels.gpr.X_train_
@@ -43,12 +45,13 @@ class ETMPC:
         print(self.Lambdax)
         print(self.alpha)
         print(self.y_std)
+        print(self.beta)
 
     def setBeta(self, b, Y, cov):
         # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
-        # return 1
+        return 1
         # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -127,39 +130,45 @@ class ETMPC:
         trigger_values = np.array(
             [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
 
-        print(self.gamma)
-        print(self.alpha)
-        print(np.sqrt(2 * np.log((2 * (self.alpha ** 2)) / (2 * (self.alpha ** 2) - (self.gamma ** 2)))))
         for i in reversed(range(self.horizon)):
             if i == self.horizon - 1:
                 pg = np.array([self.gamma, self.gamma, self.gamma])
             c = self.cF(pg)
-
-            print(c)
+            print('asdfg')
+            print(np.diag(np.min(c) * np.sqrt(self.Lambdax) / (self.b)))
 
             psi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b * self.y_std, psi), np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+                self.b, psi), np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
             constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
             trigger_func = cp.geo_mean(psi)
             prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.CVXOPT)
+            prob_trigger.solve(solver=cp.MOSEK)
 
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
             pg = psi.value
+
+            print(psi.value)
 
             trigger_values = np.concatenate(
                 [trigger_values, psi.value.reshape(1, -1)], axis=0)
         return prob_trigger.status, np.flip(trigger_values)
 
     def triggerValue3(self, mpc, trigger_values2):
+        print('bbbbbbb')
         trigger_values3 = np.zeros((1, 3))
         for i in range(self.horizon):
             xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
             usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
             zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
             _, stdsuc = self.gpmodels.predict(zsuc)
+            c = self.cF(trigger_values2[i + 1, :])
+            # print(trigger_values2)
+            # print(trigger_values2[1, :])
+            # print((self.beta * self.y_std * stdsuc) @
+            #       np.linalg.inv(self.Lambdax) @ (self.beta * self.y_std * stdsuc))
+            # print(np.min(c))
 
             xi = cp.Variable(3, pos=True)
             c = self.cF(trigger_values2[i + 1, :])
@@ -169,10 +178,12 @@ class ETMPC:
 
             trigger_func = cp.geo_mean(xi)
             prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.CVXOPT)
+            prob_trigger.solve(solver=cp.MOSEK)
 
             if prob_trigger.status == 'infeasible':
                 return prob_trigger.status, 0
+
+            print(xi.value)
 
             trigger_values3 = np.concatenate(
                 [trigger_values3, xi.value.reshape(1, -1)], axis=0)
