@@ -6,12 +6,8 @@ np.random.seed(0)
 
 
 class ETMPC:
-    def __init__(self, args, gpmodels, y_train, gamma):
+    def __init__(self, args, gpmodels, gamma, horizon):
         self.gpmodels = gpmodels
-        print(self.gpmodels.gpr.kernel_)
-        print(self.gpmodels.gpr.kernel_.theta)
-        self.y_mean = np.mean(y_train, axis=0)
-        self.y_std = np.std(y_train, axis=0)
         self.ZT = self.gpmodels.gpr.X_train_
         self.Y = self.gpmodels.gpr.y_train_
         self.covs = self.gpmodels.gpr.L_ @ self.gpmodels.gpr.L_.T
@@ -26,7 +22,7 @@ class ETMPC:
         self.gamma = gamma
         self.b = np.array(args.b)
         self.mpc_type = args.mpc_type
-        self.horizon = args.horizon
+        self.horizon = horizon
         self.ts = args.ts
         self.mpcmodel = do_mpc.model.Model(self.mpc_type)
         self.setup_mpc = {
@@ -44,14 +40,10 @@ class ETMPC:
 
         print(self.Lambdax)
         print(self.alpha)
-        print(self.y_std)
-        print(self.beta)
 
     def setBeta(self, b, Y, cov):
-        # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
+        print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
         return 1
-        # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -75,9 +67,9 @@ class ETMPC:
         zvar = vertcat(xvar, uvar)
         mu = self.muF(zvar)
 
-        xvar_next = vertcat(xvar[0] + self.y_std[0] * mu[0] + self.y_mean[0],
-                            xvar[1] + self.y_std[1] * mu[1] + self.y_mean[1],
-                            xvar[2] + self.y_std[2] * mu[2] + self.y_mean[2])
+        xvar_next = vertcat(xvar[0] + mu[0],
+                            xvar[1] + mu[1],
+                            xvar[2] + mu[2])
         self.mpcmodel.set_rhs(var_name='xvar', expr=xvar_next)
 
         # set cost function
@@ -93,7 +85,7 @@ class ETMPC:
         mpc.set_objective(lterm=lterm, mterm=mterm)
         mpc.set_rterm(uvar=1)
         mpc.bounds['upper', '_u', 'uvar'] = np.array(
-            [[self.v_max], [self.omega_max * 2]])
+            [[self.v_max], [2 * self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
             np.array([[0.05], [0.05], [0.05]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
@@ -126,68 +118,53 @@ class ETMPC:
                                 (2 * (self.alpha**2) - (pg[i]**2)))) for i in range(3)]
         return c
 
-    def triggerValue2(self, mpc):
-        trigger_values = np.array(
+    def psiF(self, mpc):
+        psi_values = np.array(
             [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
 
         for i in reversed(range(self.horizon)):
             if i == self.horizon - 1:
                 pg = np.array([self.gamma, self.gamma, self.gamma])
             c = self.cF(pg)
-            print('asdfg')
-            print(np.diag(np.min(c) * np.sqrt(self.Lambdax) / (self.b)))
 
             psi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b, psi), np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+                self.b, psi), np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
             constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
-            trigger_func = cp.geo_mean(psi)
-            prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.MOSEK)
+            psi_func = cp.geo_mean(psi)
+            prob_psi = cp.Problem(cp.Maximize(psi_func), constranits)
+            prob_psi.solve(solver=cp.MOSEK)
 
-            if prob_trigger.status == 'infeasible':
-                return prob_trigger.status, 0
+            if prob_psi.status == 'infeasible':
+                return prob_psi.status, 0
             pg = psi.value
+            psi_values = np.concatenate(
+                [psi_values, psi.value.reshape(1, -1)], axis=0)
+        return prob_psi.status, np.flip(psi_values)
 
-            print(psi.value)
-
-            trigger_values = np.concatenate(
-                [trigger_values, psi.value.reshape(1, -1)], axis=0)
-        return prob_trigger.status, np.flip(trigger_values)
-
-    def triggerValue3(self, mpc, trigger_values2):
-        print('bbbbbbb')
-        trigger_values3 = np.zeros((1, 3))
+    def xiF(self, mpc, psi_values):
+        xi_values = np.zeros((1, 3))
         for i in range(self.horizon):
             xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
             usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
             zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
             _, stdsuc = self.gpmodels.predict(zsuc)
-            c = self.cF(trigger_values2[i + 1, :])
-            # print(trigger_values2)
-            # print(trigger_values2[1, :])
-            # print((self.beta * self.y_std * stdsuc) @
-            #       np.linalg.inv(self.Lambdax) @ (self.beta * self.y_std * stdsuc))
-            # print(np.min(c))
+            c = self.cF(psi_values[i + 1, :])
 
             xi = cp.Variable(3, pos=True)
-            c = self.cF(trigger_values2[i + 1, :])
-            constranits = [cp.quad_form(cp.multiply(self.b * self.y_std, xi) + self.beta *
-                                        self.y_std * stdsuc, np.linalg.inv(self.Lambdax)) <= np.min(c) ** 2]
+            constranits = [cp.quad_form(cp.multiply(self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
             constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
 
-            trigger_func = cp.geo_mean(xi)
-            prob_trigger = cp.Problem(cp.Maximize(trigger_func), constranits)
-            prob_trigger.solve(solver=cp.MOSEK)
+            xi_func = cp.geo_mean(xi)
+            prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
+            prob_xi.solve(solver=cp.MOSEK)
 
-            if prob_trigger.status == 'infeasible':
-                return prob_trigger.status, 0
+            if prob_xi.status == 'infeasible':
+                return prob_xi.status, 0
 
-            print(xi.value)
-
-            trigger_values3 = np.concatenate(
-                [trigger_values3, xi.value.reshape(1, -1)], axis=0)
-        return prob_trigger.status, trigger_values3
+            xi_values = np.concatenate(
+                [xi_values, xi.value.reshape(1, -1)], axis=0)
+        return prob_xi.status, xi_values
 
     def kernelValue(self, alpha, Lambdax, x, xprime):
         return (alpha ** 2) * np.exp(-0.5 * (x - xprime) @ np.linalg.inv(Lambdax) @ (x - xprime))
@@ -201,21 +178,26 @@ class ETMPC:
         kmd = self.kernelMetric(xstar, xe)
         return np.all(kmd <= trigger_value)
 
-    def learnD(self, xe, u, xe_next, ze_train, ye_train):
+    def stdbarF(self, xi1):
+        cbar = self.cF(xi1)
+        stdbar = np.diag(cbar * np.sqrt(self.Lambdax)) / self.beta
+        return stdbar
+
+    def learnD(self, xe, u, xe_next, ze_train, ye_train, xi_values):
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
-
-        if np.all(stdsuc <= 0.185):
+        stdbar = self.stdbarF(xi_values[:, 1])
+        if stdsuc > np.mean(stdbar):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)
         return ze_train, ye_train
 
     def dataCat(self, ze_train, ye_train):
-        z_train_sum = self.gpmodels.gpr.X_train_
-        y_train_sum = self.y_std * self.gpmodels.gpr.y_train_ + self.y_mean
-        z_train_sum = np.concatenate([z_train_sum, ze_train], axis=0)
-        y_train_sum = np.concatenate([y_train_sum, ye_train], axis=0)
+        z_train_sum = np.concatenate(
+            [self.gpmodels.gpr.X_train_, ze_train], axis=0)
+        y_train_sum = np.concatenate(
+            [self.gpmodels.gpr.y_train_, ye_train], axis=0)
         return z_train_sum, y_train_sum
 
 # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
@@ -250,3 +232,11 @@ class ETMPC:
     #         trigger_values = np.concatenate(
     #             [trigger_values, psi.value.reshape(1, -1)], axis=0)
     #     return prob_trigger.status, np.flip(trigger_values)
+# self.y_mean = np.mean(y_train, axis=0)
+        # self.y_std = np.std(y_train, axis=0)
+# xvar_next = vertcat(xvar[0] + self.y_std[0] * mu[0] + self.y_mean[0],
+    #                     xvar[1] + self.y_std[1] * mu[1] + self.y_mean[1],
+    #                     xvar[2] + self.y_std[2] * mu[2] + self.y_mean[2])
+# print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+# y_train_sum = self.y_std * self.gpmodels.gpr.y_train_ + self.y_mean
