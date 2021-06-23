@@ -38,9 +38,6 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
-        print(self.Lambdax)
-        print(self.alpha)
-
     def setBeta(self, b, Y, cov):
         print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
         return 1

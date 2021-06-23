@@ -41,8 +41,9 @@ class Symbolic:
         self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
-
-        print(self.ellin)
+        np.save('../data/Xqlist.npy', self.Xqlist)
+        np.save('../data/etax.npy', 2 / np.sqrt(3) * self.etax_v)
+        np.save('../data/gamma.npy', self.gamma)
 
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
@@ -60,8 +61,8 @@ class Symbolic:
                           self.Xsafe[i, 1] + 0.000001, 2 / np.sqrt(3) * self.etax_v[i]).astype(np.float64) for i in range(3)]
 
     def setUq(self):
-        Vq = np.arange(0., self.etau + 0.000001, self.etau)
-        Omegaq = np.arange(-self.omega_max, self.omega_max +
+        Vq = np.arange(-self.etau, self.v_max + 0.000001, self.etau)
+        Omegaq = np.arange(-self.etau, self.omega_max +
                            self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
         for i in range(Vq.shape[0]):
@@ -84,7 +85,8 @@ class Symbolic:
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
         sgflag = 1
-        print(self.gpmodels.predict(np.array([[1, 1, 1, 1, 1]])))
+        print(Qinit)
+        print(Qind_init.shape)
         # return
         while sgflag == 1:
             Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,

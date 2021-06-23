@@ -2,6 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def plot_contractive_set(args):
+    Q = np.load('../data/Q2.npy')
+    Qind = np.load('../data/Qind2.npy')
+    Xqlist = np.load('../data/Xqlist.npy')
+    etax = np.load('../data/etax.npy')
+    gamma = np.load('../data/gamma.npy')
+    
+    # fig = plt.figure(figsize=(16, 9))
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter3D(etax[0] * Qind[:, 0] + np.min(Xqlist, axis=1)[0], etax[0] * Qind[:, 1] + np.min(Xqlist, axis=1)[1],
+    #              etax[2] * Qind[:, 2] + np.min(Xqlist, axis=1)[2], marker=".", linestyle='None')
+    # ax.set_xlabel(r"$X$")
+    # ax.set_ylabel(r"$Y$")
+    # ax.set_zlabel(r"$\theta$")
+    # fig.savefig('../image/contractive_set.pdf')
+    # plt.show()
+
+
 def plot_traj_trigger(args, vehicle):
     pathr = np.zeros((1, 3))
     for i in range(100):
@@ -35,3 +53,4 @@ def plot_traj_trigger(args, vehicle):
               loc='upper left', borderaxespad=0, ncol=2)
     fig.tight_layout()
     fig.savefig('../image/traj_trigger.pdf')
+

@@ -177,7 +177,6 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
             }
             if (qflag == 1)
             {
-
                 cout << idq << "/" << Qind.rows() << endl;
                 break;
             }
