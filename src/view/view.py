@@ -27,7 +27,7 @@ def plot_traj_trigger(args, vehicle):
 
         trigger_value = 0
         for j in range(trigger.shape[0] - 1):
-            trigger_value += int(trigger[j + 1])
+            trigger_value += int(trigger[j + 1]) + 1
             ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
                        color=cm(i), marker='x', label='trigger:{0}'.format(int(trigger[j + 1])))
     ax.plot(pathr[1:, 0], pathr[1:, 1], color='magenta', label='reference')
