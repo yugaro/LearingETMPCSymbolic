@@ -44,6 +44,8 @@ class Symbolic:
         np.save('../data/Xqlist.npy', self.Xqlist)
         np.save('../data/etax.npy', 2 / np.sqrt(3) * self.etax_v)
         np.save('../data/gamma.npy', self.gamma)
+        np.save('../data/alpha.npy', self.alpha)
+        np.save('../data/Lambdax.npy', self.Lambdax)
 
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
@@ -83,15 +85,15 @@ class Symbolic:
             [Qind_init_list[0].reshape(-1, 1), Qind_init_list[1].reshape(-1, 1), Qind_init_list[2].reshape(-1, 1)], axis=1).astype(np.float64)
 
     def safeyGame(self):
-        Qinit, Qind_init = self.setQind_init()
-        sgflag = 1
-        print(Qinit)
-        print(Qind_init.shape)
-        # return
-        while sgflag == 1:
-            Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
-                             self.noises, self.ZT, self.Y, self.b, self.Xqlist,
-                             self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin)
+        # Qinit, Qind_init = self.setQind_init()
+        Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
+        Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
+        while 1:
+            QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
+                               self.noises, self.ZT, self.Y, self.b, self.Xqlist,
+                               self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin)
+            Q = QCs[0]
+            Cs = QCs[1]
             Qindlist = np.nonzero(np.array(Q))
             Qind = np.concatenate([Qindlist[0].reshape(-1, 1), Qindlist[1].reshape(-1, 1),
                                    Qindlist[2].reshape(-1, 1)], axis=1)
@@ -99,9 +101,8 @@ class Symbolic:
                 if Qind.shape[0] == 0:
                     print('empty.')
                     return
-                sgflag = 0
                 print('complete.')
-                return Q, Qind
+                return Q, Qind, Cs
             else:
                 Qinit = Q
                 Qind_init = Qind.astype(np.float64)

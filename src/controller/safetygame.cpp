@@ -109,7 +109,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
 }
 
 template <typename T>
-vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin)
+tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin)
 {
     cout << "start safety game." << endl;
     MatrixXd xvec(3, 1);
@@ -131,6 +131,7 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
     MatrixXd xrange_u(3, 1);
     MatrixXd trlen(3, 1);
     vector<vector<vector<int>>> Qsafe;
+    MatrixXd Cs(Qind.rows(), 2);
 
     Qsafe = Q;
     xrange_l << Xqlist[0](0, 0), Xqlist[1](0, 0), Xqlist[2](0, 0);
@@ -178,6 +179,8 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
             if (qflag == 1)
             {
                 cout << idq << "/" << Qind.rows() << endl;
+                Cs(idq, 0) = Uq(idu, 0);
+                Cs(idq, 1) = Uq(idu, 1);
                 break;
             }
             if (uflag == 0)
@@ -186,7 +189,7 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
             }
         }
     }
-    return Q;
+    return forward_as_tuple(Q, Cs);
 }
 
 PYBIND11_MODULE(safetygame, m)
