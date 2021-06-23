@@ -4,13 +4,15 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(1)
+np.random.seed(0)
 
 
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
-    symmodel = Symbolic(args, gpmodels, y_train)
+    # symmodel = Symbolic(args, gpmodels, y_train)
+    symmodel = Symbolic(args, gpmodels)
+    # return
     # Q, Qind = symmodel.safeyGame()
     # np.save('../data/Q2.npy', Q)
     # np.save('../data/Qind2.npy', Qind)
@@ -21,8 +23,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 1,
-                       np.random.rand(1) + 1, 1 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 2.5,
+                       np.random.rand(1) + 2.5, 6 * np.random.rand(1) - 3])
 
         # set initial horizon
         horizon = args.horizon

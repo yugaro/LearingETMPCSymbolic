@@ -4,10 +4,8 @@ np.random.seed(3)
 
 
 class Symbolic:
-    def __init__(self, args, gpmodels, y_train):
+    def __init__(self, args, gpmodels):
         self.gpmodels = gpmodels
-        self.y_mean = np.mean(y_train, axis=0).astype(np.float64)
-        self.y_std = np.std(y_train, axis=0).astype(np.float64)
         self.ZT = self.gpmodels.gpr.X_train_.astype(np.float64)
         self.Y = self.gpmodels.gpr.y_train_.astype(np.float64)
         self.covs = self.gpmodels.gpr.L_ @ self.gpmodels.gpr.L_.T.astype(
@@ -44,6 +42,8 @@ class Symbolic:
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
+        print(self.ellin)
+
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
@@ -61,7 +61,7 @@ class Symbolic:
 
     def setUq(self):
         Vq = np.arange(0., self.etau + 0.000001, self.etau)
-        Omegaq = np.arange(0, self.omega_max +
+        Omegaq = np.arange(-self.omega_max, self.omega_max +
                            self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
         for i in range(Vq.shape[0]):
@@ -84,11 +84,12 @@ class Symbolic:
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
         sgflag = 1
+        print(self.gpmodels.predict(np.array([[1, 1, 1, 1, 1]])))
+        # return
         while sgflag == 1:
             Q = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                              self.noises, self.ZT, self.Y, self.b, self.Xqlist,
-                             self.Uq, self.etax_v, self.epsilon, self.gamma,
-                             self.y_mean, self.y_std, self.ellin)
+                             self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin)
             Qindlist = np.nonzero(np.array(Q))
             Qind = np.concatenate([Qindlist[0].reshape(-1, 1), Qindlist[1].reshape(-1, 1),
                                    Qindlist[2].reshape(-1, 1)], axis=1)

@@ -24,8 +24,11 @@ def plot_traj_trigger(args, vehicle):
         ax.plot(traj[1:, 0], traj[1:, 1], color=cm(i),
                 label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1))
         ax.scatter(traj[-1, 0], traj[-1, 1], color=cm(i), marker='*', label='goal')
+
+        trigger_value = 0
         for j in range(trigger.shape[0] - 1):
-            ax.scatter(traj[int(trigger[j + 1]), 0], traj[int(trigger[j + 1]), 1],
+            trigger_value += int(trigger[j + 1])
+            ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
                        color=cm(i), marker='x', label='trigger:{0}'.format(int(trigger[j + 1])))
     ax.plot(pathr[1:, 0], pathr[1:, 1], color='magenta', label='reference')
     ax.legend(bbox_to_anchor=(1.00, 1),

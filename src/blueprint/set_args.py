@@ -15,7 +15,7 @@ def set_args():
     parser.add_argument("--Ktheta", type=float, default=3)
     parser.add_argument("--etax_param", type=float, default=0.01)
     parser.add_argument("--etau", type=float, default=0.25)
-    parser.add_argument("--horizon", type=int, default=20)
+    parser.add_argument("--horizon", type=int, default=25)
     parser.add_argument("--gpudate_num", type=int, default=10)
     parser.add_argument("--b", type=float,
                         default=[1, 1, 1])

@@ -85,11 +85,11 @@ class ETMPC:
         mpc.set_objective(lterm=lterm, mterm=mterm)
         mpc.set_rterm(uvar=1)
         mpc.bounds['upper', '_u', 'uvar'] = np.array(
-            [[self.v_max], [2 * self.omega_max]])
+            [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.05], [0.05], [0.05]])
+            np.array([[0.025], [0.025], [0.025]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.05], [0.05], [0.05]])
+            [[0.025], [0.025], [0.025]])
         mpc.setup()
 
         # set simulator and estimator
@@ -130,7 +130,7 @@ class ETMPC:
             psi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
                 self.b, psi), np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
-            constranits += [psi[j] <= 1.41 * self.alpha for j in range(3)]
+            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
             psi_func = cp.geo_mean(psi)
             prob_psi = cp.Problem(cp.Maximize(psi_func), constranits)
             prob_psi.solve(solver=cp.MOSEK)
