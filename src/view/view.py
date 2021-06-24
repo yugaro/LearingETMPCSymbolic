@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 
 
 def traj_safety_controller(args, vehicle):
-    Q = np.load('../data/Q2.npy')
-    Qind = np.load('../data/Qind2.npy')
+    Q = np.load('../data/Q3.npy')
+    Qind = np.load('../data/Qind3.npy')
     Xqlist = np.load('../data/Xqlist.npy')
     etax = np.load('../data/etax.npy')
-    Cs = np.load('../data/Cs.npy')
+    Cs = np.load('../data/Cs3.npy')
 
     xe = etax * Qind[-1, :] + np.min(Xqlist, axis=1)
     xe_traj = xe.reshape(1, -1)
@@ -15,8 +15,9 @@ def traj_safety_controller(args, vehicle):
     ur = np.array([args.v_r, args.omega_r])
     xr_traj = (xr - xe).reshape(1, -1)
     for i in range(1000):
-        xpoint = ((xe - np.min(Xqlist, axis=1)) // etax).astype(np.int)
+        xpoint = (np.round((xe - np.min(Xqlist, axis=1)) / etax)).astype(np.int)
         indcs = np.where(np.all(Qind == xpoint, axis=1))[0][0]
+
         u = Cs[indcs, :]
 
         xe_next = vehicle.errRK4(xe, u)
@@ -46,8 +47,8 @@ def plot_traj_safe(args, vehicle):
 
 
 def plot_contractive_set(args, vehicle):
-    Q = np.load('../data/Q2.npy')
-    Qind = np.load('../data/Qind2.npy')
+    Q = np.load('../data/Q3.npy')
+    Qind = np.load('../data/Qind3.npy')
     Cs = np.load('../data/Cs.npy')
     Xqlist = np.load('../data/Xqlist.npy')
     etax = np.load('../data/etax.npy')
