@@ -64,7 +64,7 @@ class Symbolic:
 
     def setUq(self):
         Vq = np.arange(-self.etau, self.v_max + 0.000001, self.etau)
-        Omegaq = np.arange(-self.etau, self.omega_max +
+        Omegaq = np.arange(0, 2 * self.omega_max +
                            self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
         for i in range(Vq.shape[0]):
@@ -85,9 +85,9 @@ class Symbolic:
             [Qind_init_list[0].reshape(-1, 1), Qind_init_list[1].reshape(-1, 1), Qind_init_list[2].reshape(-1, 1)], axis=1).astype(np.float64)
 
     def safeyGame(self):
-        # Qinit, Qind_init = self.setQind_init()
-        Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
-        Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
+        Qinit, Qind_init = self.setQind_init()
+        # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
+        # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,

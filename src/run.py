@@ -16,7 +16,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
     Q, Qind, Cs = symmodel.safeyGame()
     np.save('../data/Q3.npy', Q)
     np.save('../data/Qind3.npy', Qind)
-    np.save('../data/Cs.npy', Cs)
+    np.save('../data/Cs3.npy', Cs)
     return
 
     while 1:

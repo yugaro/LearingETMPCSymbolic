@@ -9,7 +9,7 @@ def set_args():
     parser.add_argument("--v_r", type=float, default=1.0)
     parser.add_argument("--omega_r", type=float, default=1.0)
     parser.add_argument("--v_max", type=float, default=3.0)
-    parser.add_argument("--omega_max", type=float, default=3.25)
+    parser.add_argument("--omega_max", type=float, default=3.14)
     parser.add_argument("--Kx", type=float, default=3)
     parser.add_argument("--Ky", type=float, default=1)
     parser.add_argument("--Ktheta", type=float, default=3)
@@ -21,7 +21,7 @@ def set_args():
                         default=[1, 1, 1])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-0.3, 0.3], [-0.3, 0.3], [-0.3, 0.3]])
-    parser.add_argument("--zlattice", type=int, default=1)
+    parser.add_argument("--zlattice", type=int, default=3)
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])
