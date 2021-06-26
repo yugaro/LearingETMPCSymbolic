@@ -54,6 +54,8 @@ def plot_contractive_set(args, vehicle):
     etax = np.load('../data/etax.npy')
     gamma = np.load('../data/gamma.npy')
 
+    print(Qind)
+
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter3D(etax[0] * Qind[:, 0] + np.min(Xqlist, axis=1)[0], etax[0] * Qind[:, 1] + np.min(Xqlist, axis=1)[1],
