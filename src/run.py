@@ -10,14 +10,13 @@ np.random.seed(0)
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
-    # symmodel = Symbolic(args, gpmodels, y_train)
     symmodel = Symbolic(args, gpmodels)
     # return
-    Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q3.npy', Q)
-    np.save('../data/Qind3.npy', Qind)
-    np.save('../data/Cs3.npy', Cs)
-    return
+    # Q, Qind, Cs = symmodel.safeyGame()
+    # np.save('../data/Q3.npy', Q)
+    # np.save('../data/Qind3.npy', Qind)
+    # np.save('../data/Cs3.npy', Cs)
+    # return
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -29,7 +28,6 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
 
         # set initial horizon
         horizon = args.horizon
-
         while 1:
             # solve OCP
             etmpc = ETMPC(args, gpmodels, symmodel.gamma, horizon)
@@ -39,15 +37,15 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                 mpc, simulator, estimator, x0)
 
             # solve optimization problem
-            psi_status, psi_values = etmpc.psiF(mpc)
-            xi_status, xi_values = etmpc.xiF(
-                mpc, psi_values)
+            # psi_status, psi_values = etmpc.psiF(mpc)
+            xi_status, xi_values = etmpc.xiF2(mpc)
 
             print('mpc status:', mpc_status)
             print('xi status:', xi_status)
             if mpc_status is not True or xi_status != 'optimal':
                 print('assumption is not hold.')
                 break
+            as_tmp = 1
             ulist_pre = ulist
             for i in range(horizon + 1):
                 if i == 0:
@@ -105,11 +103,12 @@ if __name__ == '__main__':
     trigger_data = [np.zeros(1) for i in range(100)]
     iter_num = 0
     while 1:
+        print('Iter:', iter_num + 1)
         iterdata = iterTask(args, vehicle, z_train,
                             y_train, traj_data, trigger_data, iter_num)
         iter_num += 1
         if iterdata[0] == 1:
-            print('Event-triggered mpc was completed.')
+            print('Event-triggered mpc was completed in the iter ', iter_num, '.')
             break
         else:
             z_train = iterdata[1].copy()

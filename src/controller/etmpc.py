@@ -39,8 +39,8 @@ class ETMPC:
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
     def setBeta(self, b, Y, cov):
-        print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        return 1
+        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] / 2)
+        # return 1
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -118,7 +118,6 @@ class ETMPC:
     def psiF(self, mpc):
         psi_values = np.array(
             [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
-
         for i in reversed(range(self.horizon)):
             if i == self.horizon - 1:
                 pg = np.array([self.gamma, self.gamma, self.gamma])
@@ -162,6 +161,37 @@ class ETMPC:
             xi_values = np.concatenate(
                 [xi_values, xi.value.reshape(1, -1)], axis=0)
         return prob_xi.status, xi_values
+
+    def xiF2(self, mpc):
+        xi_values = np.array(
+            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
+        for i in reversed(range(self.horizon)):
+            if i == self.horizon - 1:
+                xg = np.array([self.gamma, self.gamma, self.gamma])
+            c = self.cF(xg)
+
+            xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
+            usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
+            zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
+            _, stdsuc = self.gpmodels.predict(zsuc)
+
+            xi = cp.Variable(3, pos=True)
+            constranits = [cp.quad_form(cp.multiply(
+                self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
+            constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
+
+            xi_func = cp.geo_mean(xi)
+            prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
+            prob_xi.solve(solver=cp.MOSEK)
+
+            if prob_xi.status == 'infeasible':
+                return prob_xi.status, 0
+            xi_values = np.concatenate(
+                [xi_values, xi.value.reshape(1, -1)], axis=0)
+
+            xg = xi.value + (self.beta * stdsuc + self.noises) / self.b
+
+        return prob_xi.status, np.flip(xi_values)
 
     def kernelValue(self, alpha, Lambdax, x, xprime):
         return (alpha ** 2) * np.exp(-0.5 * (x - xprime) @ np.linalg.inv(Lambdax) @ (x - xprime))
