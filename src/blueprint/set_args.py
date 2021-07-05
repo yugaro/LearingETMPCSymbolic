@@ -9,7 +9,7 @@ def set_args():
     parser.add_argument("--v_r", type=float, default=1.0)
     parser.add_argument("--omega_r", type=float, default=1.0)
     parser.add_argument("--v_max", type=float, default=3.0)
-    parser.add_argument("--omega_max", type=float, default=3.14)
+    parser.add_argument("--omega_max", type=float, default=3.141)
     parser.add_argument("--Kx", type=float, default=3)
     parser.add_argument("--Ky", type=float, default=1)
     parser.add_argument("--Ktheta", type=float, default=3)
