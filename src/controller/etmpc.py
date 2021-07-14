@@ -39,7 +39,7 @@ class ETMPC:
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
     def setBeta(self, b, Y, cov):
-        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] / 2)
+        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
         # return 1
 
     def kstarF(self, zvar):
@@ -115,54 +115,7 @@ class ETMPC:
                                 (2 * (self.alpha**2) - (pg[i]**2)))) for i in range(3)]
         return c
 
-    def psiF(self, mpc):
-        psi_values = np.array(
-            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
-        for i in reversed(range(self.horizon)):
-            if i == self.horizon - 1:
-                pg = np.array([self.gamma, self.gamma, self.gamma])
-            c = self.cF(pg)
-
-            psi = cp.Variable(3, pos=True)
-            constranits = [cp.quad_form(cp.multiply(
-                self.b, psi), np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
-            constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
-            psi_func = cp.geo_mean(psi)
-            prob_psi = cp.Problem(cp.Maximize(psi_func), constranits)
-            prob_psi.solve(solver=cp.MOSEK)
-
-            if prob_psi.status == 'infeasible':
-                return prob_psi.status, 0
-            pg = psi.value
-            psi_values = np.concatenate(
-                [psi_values, psi.value.reshape(1, -1)], axis=0)
-        return prob_psi.status, np.flip(psi_values)
-
-    def xiF(self, mpc, psi_values):
-        xi_values = np.zeros((1, 3))
-        for i in range(self.horizon):
-            xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
-            usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
-            zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
-            _, stdsuc = self.gpmodels.predict(zsuc)
-            c = self.cF(psi_values[i + 1, :])
-
-            xi = cp.Variable(3, pos=True)
-            constranits = [cp.quad_form(cp.multiply(self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
-            constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
-
-            xi_func = cp.geo_mean(xi)
-            prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
-            prob_xi.solve(solver=cp.MOSEK)
-
-            if prob_xi.status == 'infeasible':
-                return prob_xi.status, 0
-
-            xi_values = np.concatenate(
-                [xi_values, xi.value.reshape(1, -1)], axis=0)
-        return prob_xi.status, xi_values
-
-    def xiF2(self, mpc):
+    def xiF(self, mpc):
         xi_values = np.array(
             [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
         for i in reversed(range(self.horizon)):
@@ -178,7 +131,8 @@ class ETMPC:
             xi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
                 self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
-            constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
+            constranits += [xi[j] + (self.beta * stdsuc + self.noises) /
+                            self.b <= 1.4 * self.alpha for j in range(3)]
 
             xi_func = cp.geo_mean(xi)
             prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
@@ -210,10 +164,13 @@ class ETMPC:
         stdbar = np.diag(cbar * np.sqrt(self.Lambdax)) / self.beta
         return stdbar
 
-    def learnD(self, xe, u, xe_next, ze_train, ye_train, xi_values):
+    def learnD(self, xe, u, xe_next, ze_train, ye_train, xi_values, lflag):
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
-        stdbar = self.stdbarF(xi_values[:, 1])
+        if lflag:
+            stdbar = self.stdbarF(xi_values[:, 1])
+        else:
+            stdbar = 0
         if stdsuc > np.mean(stdbar):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
@@ -226,3 +183,51 @@ class ETMPC:
         y_train_sum = np.concatenate(
             [self.gpmodels.gpr.y_train_, ye_train], axis=0)
         return z_train_sum, y_train_sum
+
+# def xiF(self, mpc, psi_values):
+    #     xi_values = np.zeros((1, 3))
+    #     for i in range(self.horizon):
+    #         xsuc = np.array(mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
+    #         usuc = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
+    #         zsuc = np.concatenate([xsuc, usuc], axis=0).reshape(1, -1)
+    #         _, stdsuc = self.gpmodels.predict(zsuc)
+    #         c = self.cF(psi_values[i + 1, :])
+
+    #         xi = cp.Variable(3, pos=True)
+    #         constranits = [cp.quad_form(cp.multiply(self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
+    #         constranits += [xi[j] <= 1.41213 * self.alpha for j in range(3)]
+
+    #         xi_func = cp.geo_mean(xi)
+    #         prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
+    #         prob_xi.solve(solver=cp.MOSEK)
+
+    #         if prob_xi.status == 'infeasible':
+    #             return prob_xi.status, 0
+
+    #         xi_values = np.concatenate(
+    #             [xi_values, xi.value.reshape(1, -1)], axis=0)
+    #     return prob_xi.status, xi_values
+
+
+# def psiF(self, mpc):
+#       psi_values = np.array(
+#            [self.gamma, self.gamma, self.gamma]).reshape(1, -1)
+#        for i in reversed(range(self.horizon)):
+#             if i == self.horizon - 1:
+#                 pg = np.array([self.gamma, self.gamma, self.gamma])
+#             c = self.cF(pg)
+
+#             psi = cp.Variable(3, pos=True)
+#             constranits = [cp.quad_form(cp.multiply(
+#                 self.b, psi), np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
+#             constranits += [psi[j] <= 1.41213 * self.alpha for j in range(3)]
+#             psi_func = cp.geo_mean(psi)
+#             prob_psi = cp.Problem(cp.Maximize(psi_func), constranits)
+#             prob_psi.solve(solver=cp.MOSEK)
+
+#             if prob_psi.status == 'infeasible':
+#                 return prob_psi.status, 0
+#             pg = psi.value
+#             psi_values = np.concatenate(
+#                 [psi_values, psi.value.reshape(1, -1)], axis=0)
+#         return prob_psi.status, np.flip(psi_values)

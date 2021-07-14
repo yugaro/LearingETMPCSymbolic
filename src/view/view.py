@@ -99,4 +99,4 @@ def plot_traj_trigger(args, vehicle):
     ax.legend(bbox_to_anchor=(1.00, 1),
               loc='upper left', borderaxespad=0, ncol=2)
     fig.tight_layout()
-    fig.savefig('../image/traj_trigger2.pdf')
+    fig.savefig('../image/traj_trigger3.pdf')
