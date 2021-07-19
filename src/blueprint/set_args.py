@@ -21,7 +21,7 @@ def set_args():
                         default=[1, 1, 1])
     parser.add_argument("--Xsafe", type=float,
                         default=[[-0.3, 0.3], [-0.3, 0.3], [-0.3, 0.3]])
-    parser.add_argument("--zlattice", type=int, default=3)
+    parser.add_argument("--zlattice", type=int, default=2)
     parser.add_argument("--mpc_type", type=str, default='discrete')
     parser.add_argument("--weightx", type=float,
                         default=[1.0, 1.0, 1.0])

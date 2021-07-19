@@ -81,6 +81,8 @@ class ETMPC:
         mpc.set_param(**self.setup_mpc)
         mpc.set_objective(lterm=lterm, mterm=mterm)
         mpc.set_rterm(uvar=1)
+        mpc.bounds['lower', '_u', 'uvar'] = -np.array(
+            [[self.v_max], [self.omega_max]])
         mpc.bounds['upper', '_u', 'uvar'] = np.array(
             [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \

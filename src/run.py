@@ -76,6 +76,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                         horizon_pre = horizon
                         horizon -= (trigger_time - 1)
                         x0 = xe
+                        print(x0)
                         trigger_data[iter_num] = np.concatenate(
                             [trigger_data[iter_num], np.array([trigger_time])])
                         print('trigger:', trigger_time)
