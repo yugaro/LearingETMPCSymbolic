@@ -4,7 +4,7 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(0)
+np.random.seed(1)
 
 
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num):
@@ -23,8 +23,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 4.,
-                       np.random.rand(1) + 4., 6 * np.random.rand(1) - 3])
+        x0 = np.array([np.random.rand(1) + 2.5,
+                       np.random.rand(1) + 2.5, 3 * np.random.rand(1)])
 
         # set initial horizon
         horizon = args.horizon
@@ -44,8 +44,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
 
             # solve optimization problem
             xi_status, xi_values = etmpc.xiF(mpc)
-            print('xi status:', xi_status)
             if xi_status == 'optimal':
+                print('xi status:', xi_status)
                 for i in range(horizon + 1):
                     if i == 0:
                         xe = x0.reshape(-1)
@@ -54,6 +54,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                             [traj_data[iter_num], (xr - xe).reshape(1, -1)], axis=0)
                     xstar = np.array(
                         mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
+
+                    print(xe, xstar)
 
                     if etmpc.triggerF(xstar, xe, xi_values[i, :]) and i < horizon:
                         u = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
@@ -76,7 +78,6 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                         horizon_pre = horizon
                         horizon -= (trigger_time - 1)
                         x0 = xe
-                        print(x0)
                         trigger_data[iter_num] = np.concatenate(
                             [trigger_data[iter_num], np.array([trigger_time])])
                         print('trigger:', trigger_time)
@@ -111,7 +112,6 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                     xr = xr_next
 
                 z_train_sum, y_train_sum = etmpc.dataCat(ze_train[1:], ye_train[1:])
-                print('data points num:', z_train_sum.shape[0])
                 return [0, z_train_sum, y_train_sum]
 
 
@@ -125,6 +125,7 @@ if __name__ == '__main__':
     iter_num = 0
     while 1:
         print('Iter:', iter_num + 1)
+        print('data points num:', z_train.shape[0])
         iterdata = iterTask(args, vehicle, z_train,
                             y_train, traj_data, trigger_data, iter_num)
         iter_num += 1

@@ -39,8 +39,9 @@ class ETMPC:
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
     def setBeta(self, b, Y, cov):
+        if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0]:
+            return 1
         return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        # return 1
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -86,9 +87,9 @@ class ETMPC:
         mpc.bounds['upper', '_u', 'uvar'] = np.array(
             [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
-            np.array([[0.025], [0.025], [0.025]])
+            np.array([[0.02], [0.02], [0.02]])
         mpc.terminal_bounds['upper', '_x', 'xvar'] = np.array(
-            [[0.025], [0.025], [0.025]])
+            [[0.02], [0.02], [0.02]])
         mpc.setup()
 
         # set simulator and estimator
@@ -132,9 +133,9 @@ class ETMPC:
 
             xi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b, xi) + self.beta * stdsuc, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
+                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.max(c) ** 2]
             constranits += [xi[j] + (self.beta * stdsuc + self.noises) /
-                            self.b <= 1.4 * self.alpha for j in range(3)]
+                            self.b <= 1.4142 * self.alpha for j in range(3)]
 
             xi_func = cp.geo_mean(xi)
             prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
@@ -170,10 +171,10 @@ class ETMPC:
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
         if lflag:
-            stdbar = self.stdbarF(xi_values[:, 1])
+            stdbar = self.stdbarF(xi_values[:, 1]) / 500
         else:
-            stdbar = 0
-        if stdsuc > np.mean(stdbar):
+            stdbar = 0.01
+        if stdsuc < np.mean(stdbar):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)

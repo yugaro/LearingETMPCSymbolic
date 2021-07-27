@@ -15,7 +15,7 @@ def make_data(args, vehicle):
         if i % 5 == 0:
             j = i // 5
             x = xinits[j, :]
-        if np.random.rand(1) > 0.9:
+        if np.random.rand(1) > 1.9:
             u = np.array([2, 2 * 1]) * \
                 np.random.rand(1) - np.array([0, 1])
         else:
