@@ -23,16 +23,16 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 2.5,
-                       np.random.rand(1) + 2.5, 3 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 2,
+                       np.random.rand(1) + 2, 3 * np.random.rand(1)])
 
         # set initial horizon
         horizon = args.horizon
-        etmpc = ETMPC(args, gpmodels, symmodel.gamma, horizon)
-        mpc, simulator, estimator = etmpc.setUp()
 
         while 1:
             # solve OCP
+            etmpc = ETMPC(args, gpmodels, symmodel.gamma, horizon)
+            mpc, simulator, estimator = etmpc.setUp()
             etmpc.set_initial(mpc, simulator, estimator, x0)
             mpc_status, ulist = etmpc.operation(
                 mpc, simulator, estimator, x0)
@@ -54,8 +54,6 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                             [traj_data[iter_num], (xr - xe).reshape(1, -1)], axis=0)
                     xstar = np.array(
                         mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
-
-                    print(xe, xstar)
 
                     if etmpc.triggerF(xstar, xe, xi_values[i, :]) and i < horizon:
                         u = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
@@ -83,7 +81,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                         print('trigger:', trigger_time)
                         print('updated horizon:', horizon)
                         break
-                if horizon == 1 and horizon_pre == 1:
+                print(xe)
+                if (horizon == 1 and horizon_pre == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
                     return [1, traj_data, trigger_data]
             else:
