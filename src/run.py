@@ -4,7 +4,7 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(1)
+np.random.seed(3)
 
 
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num):
@@ -23,8 +23,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 2,
-                       np.random.rand(1) + 2, 3 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 3,
+                       np.random.rand(1) + 3, 3 * np.random.rand(1)])
 
         # set initial horizon
         horizon = args.horizon
@@ -82,33 +82,33 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                         print('updated horizon:', horizon)
                         break
                 print(xe)
-                if (horizon == 1 and horizon_pre == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
+                if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
                     return [1, traj_data, trigger_data]
             else:
                 print('xi status:', xi_status)
                 print('Assumption is not hold. (xi)')
-                for i in range(horizon):
-                    if i == 0:
-                        xe = x0.reshape(-1)
-                        xr = np.array(args.xinit_r).reshape(-1)
-                        traj_data[iter_num] = np.concatenate(
-                            [traj_data[iter_num], (xr - xe).reshape(1, -1)], axis=0)
+                # for i in range(horizon):
+                #     if i == 0:
+                #         xe = x0.reshape(-1)
+                #         xr = np.array(args.xinit_r).reshape(-1)
+                #         traj_data[iter_num] = np.concatenate(
+                #             [traj_data[iter_num], (xr - xe).reshape(1, -1)], axis=0)
 
-                    u = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
-                    ur = np.array([args.v_r, args.omega_r])
+                #     u = np.array(mpc.opt_x_num['_u', i, 0]).reshape(-1)
+                #     ur = np.array([args.v_r, args.omega_r])
 
-                    xe_next = vehicle.errRK4(xe, u)
-                    xr_next = vehicle.realRK4(xr, ur)
+                #     xe_next = vehicle.errRK4(xe, u)
+                #     xr_next = vehicle.realRK4(xr, ur)
 
-                    traj_data[iter_num] = np.concatenate(
-                        [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
+                #     traj_data[iter_num] = np.concatenate(
+                #         [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
 
-                    ze_train, ye_train = etmpc.learnD(
-                        xe, u, xe_next, ze_train, ye_train, xi_values, 0)
+                #     ze_train, ye_train = etmpc.learnD(
+                #         xe, u, xe_next, ze_train, ye_train, xi_values, 0)
 
-                    xe = xe_next
-                    xr = xr_next
+                #     xe = xe_next
+                #     xr = xr_next
 
                 z_train_sum, y_train_sum = etmpc.dataCat(ze_train[1:], ye_train[1:])
                 return [0, z_train_sum, y_train_sum]
