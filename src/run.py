@@ -11,11 +11,11 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels)
-    # return
+
     # Q, Qind, Cs = symmodel.safeyGame()
-    # np.save('../data/Q3.npy', Q)
-    # np.save('../data/Qind3.npy', Qind)
-    # np.save('../data/Cs3.npy', Cs)
+    # np.save('../data/Q4.npy', Q)
+    # np.save('../data/Qind4.npy', Qind)
+    # np.save('../data/Cs4.npy', Cs)
     # return
 
     while 1:
@@ -23,8 +23,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 3,
-                       np.random.rand(1) + 3, 3 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 2,
+                       np.random.rand(1) + 2, 3 * np.random.rand(1)])
 
         # set initial horizon
         horizon = args.horizon

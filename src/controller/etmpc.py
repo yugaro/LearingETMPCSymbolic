@@ -39,11 +39,13 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
+        print(self.beta)
+
     def setBeta(self, b, Y, cov):
         # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
-        # if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0]:
-        return 1
-        # return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
+        if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
+            return 1
+        return np.sqrt(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
 
     def kstarF(self, zvar):
         kstar = SX.zeros(self.ZT.shape[0])
@@ -84,10 +86,10 @@ class ETMPC:
         mpc.set_param(**self.setup_mpc)
         mpc.set_objective(lterm=lterm, mterm=mterm)
         mpc.set_rterm(uvar=1)
-        # mpc.bounds['lower', '_u', 'uvar'] = -np.array(
-        #     [[self.v_max], [self.omega_max]])
-        # mpc.bounds['upper', '_u', 'uvar'] = np.array(
-        #     [[self.v_max], [self.omega_max]])
+        mpc.bounds['lower', '_u', 'uvar'] = -np.array(
+            [[self.v_max], [self.omega_max]])
+        mpc.bounds['upper', '_u', 'uvar'] = np.array(
+            [[self.v_max], [self.omega_max]])
         mpc.terminal_bounds['lower', '_x', 'xvar'] = - \
             np.array([[self.terminalset[0]], [
                      self.terminalset[1]], [self.terminalset[2]]])
@@ -136,7 +138,7 @@ class ETMPC:
 
             xi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c)]
+                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c) / 6]
             constranits += [xi[j] + (self.beta[j] * stdsuc + self.noises) /
                             self.b[j] <= 1.4142 * self.alpha for j in range(3)]
 
@@ -175,9 +177,9 @@ class ETMPC:
         _, stdsuc = self.gpmodels.predict(ze)
         if lflag:
             # stdbar = self.stdbarF(xi_values[:, 1]) / 1000
-            stdbar = 0.2
+            stdbar = 0.1
         else:
-            stdbar = 0.0
+            stdbar = 0.1
         if stdsuc < np.mean(stdbar):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
