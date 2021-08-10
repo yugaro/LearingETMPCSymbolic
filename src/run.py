@@ -7,7 +7,7 @@ from controller.etmpc import ETMPC
 np.random.seed(3)
 
 
-def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num):
+def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels)
@@ -23,8 +23,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 2,
-                       np.random.rand(1) + 2, 3 * np.random.rand(1)])
+        x0 = np.array([np.random.rand(1) + 1,
+                       np.random.rand(1) + 1, 3 * np.random.rand(1)])
 
         # set initial horizon
         horizon = args.horizon
@@ -64,6 +64,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
 
                         traj_data[iter_num] = np.concatenate(
                             [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
+                        u_data[iter_num] = np.concatenate(
+                            [u_data[iter_num], u.reshape(1, -1)], axis=0)
 
                         if horizon != 1:
                             ze_train, ye_train = etmpc.learnD(
@@ -78,13 +80,15 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, iter_num)
                         x0 = xe
                         trigger_data[iter_num] = np.concatenate(
                             [trigger_data[iter_num], np.array([trigger_time])])
+                        horizon_data[iter_num] = np.concatenate(
+                            [horizon_data[iter_num], np.array([horizon])])
                         print('trigger:', trigger_time)
                         print('updated horizon:', horizon)
                         break
                 print(xe)
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
-                    return [1, traj_data, trigger_data]
+                    return [1, traj_data, trigger_data, u_data, horizon_data]
             else:
                 print('xi status:', xi_status)
                 print('Assumption is not hold. (xi)')
@@ -121,12 +125,14 @@ if __name__ == '__main__':
     y_train = np.load(args.datafile_y)
     traj_data = [np.zeros((1, 3)) for i in range(100)]
     trigger_data = [np.zeros(1) for i in range(100)]
+    u_data = [np.zeros((1, 2)) for i in range(100)]
+    horizon_data = [np.ones(1) * args.horizon for i in range(100)]
     iter_num = 0
     while 1:
         print('Iter:', iter_num + 1)
         print('data points num:', z_train.shape[0])
         iterdata = iterTask(args, vehicle, z_train,
-                            y_train, traj_data, trigger_data, iter_num)
+                            y_train, traj_data, trigger_data, u_data, horizon_data, iter_num)
         iter_num += 1
         if iterdata[0] == 1:
             print('Event-triggered mpc was completed in the iter ', iter_num, '.')
@@ -137,7 +143,9 @@ if __name__ == '__main__':
             print('Proceed to the next iteration.')
     for i in range(iter_num):
         np.save('../data/traj{}.npy'.format(i), iterdata[1][i])
-        np.save('../data/trigger{}.npy'.format(i), iterdata[2][i])
+        np.save('../data/trigger{}.npy'.format(i), iterdata[2][i][1:])
+        np.save('../data/u{}.npy'.format(i), iterdata[3][i][1:])
+        np.save('../data/horizon{}.npy'.format(i), iterdata[4][i])
     np.save('../data/iter_num.npy', np.array([iter_num]))
 
 # if xi_status != 'optimal':

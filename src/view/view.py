@@ -67,8 +67,64 @@ def plot_contractive_set(args, vehicle):
     plt.show()
 
 
+def plot_u_data(args, vehicle):
+    iter_num = np.load('../data/iter_num.npy').item()
+    fig, ax = plt.subplots()
+    for i in range(iter_num):
+        u = np.load('../data/u{}.npy'.format(i))
+        trigger = np.load('../data/trigger{}.npy'.format(i))
+        # ax.plot(u[:, 0])
+        # ax.plot(u[:, 1])
+        ax.plot(u[:, 0] / args.v_max + u[:, 1] / args.omega_max, linewidth=2)
+
+        trigger_value = 0
+        for j in range(trigger.shape[0] - 1):
+            trigger_value += int(trigger[j])
+            ax.plot(trigger_value, u[trigger_value, 0] /
+                    args.v_max + u[trigger_value, 1] / args.omega_max, marker='x', color='c', markersize=10)
+            # ax.plot(trigger_value, u[trigger_value, 1], marker='x')
+        ax.set_xlabel(r'Time', fontsize=15)
+        ax.set_ylabel(r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=15)
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+        ax.grid(linestyle='dotted')
+        fig.savefig('../image/utraj.pdf', bbox_inches='tight')
+
+
+def plot_horizon(args, vehicle):
+    iter_num = np.load('../data/iter_num.npy').item()
+
+    fig, ax = plt.subplots()
+    for i in range(iter_num):
+        step_horizon_data = np.zeros((1, 2))
+        horizon = np.load('../data/horizon{}.npy'.format(i))
+        trigger = np.load('../data/trigger{}.npy'.format(i))
+
+        step_pre = 0
+        for j in range(trigger.shape[0]):
+            step_pos = 0
+            # ax.plot(step_pre, horizon[j], marker='*')
+            step_horizon_data = np.concatenate(
+                [step_horizon_data, np.array([[step_pre, horizon[j]]])], axis=0)
+            step_pos += step_pre + int(trigger[j])
+            # ax.plot(step_pos, horizon[j], marker='*')
+            step_horizon_data = np.concatenate(
+                [step_horizon_data, np.array([[step_pos, horizon[j]]])], axis=0)
+            step_pre = step_pos
+        step_horizon_data = np.concatenate(
+            [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
+        ax.plot(step_horizon_data[1:, 0], step_horizon_data[1:, 1], linewidth=2)
+        ax.set_xlabel(r'Time', fontsize=15)
+        ax.set_ylabel(r'Prediction horizon', fontsize=15)
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+        ax.grid(linestyle='dotted')
+        fig.savefig('../image/horizon.pdf', bbox_inches='tight')
+
+
 def plot_traj_trigger(args, vehicle):
     pathr = np.zeros((1, 3))
+    fig, ax = plt.subplots(figsize=(6.0, 8.0))
     for i in range(100):
         if i == 0:
             xr = np.array(args.xinit_r).reshape(-1)
@@ -77,26 +133,27 @@ def plot_traj_trigger(args, vehicle):
         xr_next = vehicle.realRK4(xr, ur)
         pathr = np.concatenate([pathr, xr.reshape(1, -1)])
         xr = xr_next
+    ax.plot(pathr[1:, 0], pathr[1:, 1], color='r', label='reference', linewidth=2)
 
     iter_num = np.load('../data/iter_num.npy').item()
-    cm = plt.cm.get_cmap('jet', iter_num)
-    fig, ax = plt.subplots(1, 1)
+    # cm = plt.cm.get_cmap('jet', iter_num)
+
     for i in range(iter_num):
         traj = np.load('../data/traj{}.npy'.format(i))
         trigger = np.load('../data/trigger{}.npy'.format(i))
-        ax.scatter(traj[1, 0], traj[1, 1],
-                   color=cm(i), marker='o', label='start')
-        ax.plot(traj[1:, 0], traj[1:, 1], color=cm(i),
-                label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1))
-        ax.scatter(traj[-1, 0], traj[-1, 1], color=cm(i), marker='*', label='goal')
+        ax.scatter(traj[1, 0], traj[1, 1], marker='o', label='start', s=100, c='b')
+        ax.plot(traj[1:, 0], traj[1:, 1],
+                label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2)
+        ax.scatter(traj[-1, 0], traj[-1, 1],
+                   marker='*', label='goal', s=100, color='orange')
 
         trigger_value = 0
         for j in range(trigger.shape[0] - 1):
-            trigger_value += int(trigger[j + 1]) + 1
+            trigger_value += int(trigger[j]) + 1
             ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
-                       color=cm(i), marker='x', label='trigger:{0}'.format(int(trigger[j + 1])))
-    ax.plot(pathr[1:, 0], pathr[1:, 1], color='magenta', label='reference')
+                       color='c', marker='x', label='trigger:{0}'.format(int(trigger[j])), s=100)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
     ax.legend(bbox_to_anchor=(1.00, 1),
-              loc='upper left', borderaxespad=0, ncol=2)
-    fig.tight_layout()
-    fig.savefig('../image/traj_trigger3.pdf')
+              loc='upper left', borderaxespad=0, ncol=1, fontsize=15)
+    fig.savefig('../image/traj_trigger4.pdf', bbox_inches='tight')
