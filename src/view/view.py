@@ -54,8 +54,6 @@ def plot_contractive_set(args, vehicle):
     etax = np.load('../data/etax.npy')
     gamma = np.load('../data/gamma.npy')
 
-    print(Qind)
-
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter3D(etax[0] * Qind[:, 0] + np.min(Xqlist, axis=1)[0], etax[0] * Qind[:, 1] + np.min(Xqlist, axis=1)[1],
@@ -92,13 +90,13 @@ def plot_u_data(args, vehicle):
 
 
 def plot_horizon(args, vehicle):
-    iter_num = np.load('../data/iter_num.npy').item()
+    iter_num = np.load('../data/iter_num2.npy').item()
 
     fig, ax = plt.subplots()
     for i in range(iter_num):
         step_horizon_data = np.zeros((1, 2))
-        horizon = np.load('../data/horizon{}.npy'.format(i))
-        trigger = np.load('../data/trigger{}.npy'.format(i))
+        horizon = np.load('../data/horizon2{}.npy'.format(i))
+        trigger = np.load('../data/trigger2{}.npy'.format(i))
 
         step_pre = 0
         for j in range(trigger.shape[0]):
@@ -114,17 +112,54 @@ def plot_horizon(args, vehicle):
         step_horizon_data = np.concatenate(
             [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
         ax.plot(step_horizon_data[1:, 0], step_horizon_data[1:, 1], linewidth=2)
+        ax.hlines([1], 0, 40, color='magenta', linestyles='dashed')
         ax.set_xlabel(r'Time', fontsize=15)
         ax.set_ylabel(r'Prediction horizon', fontsize=15)
         ax.tick_params(axis='x', labelsize=15)
         ax.tick_params(axis='y', labelsize=15)
         ax.grid(linestyle='dotted')
-        fig.savefig('../image/horizon.pdf', bbox_inches='tight')
+    plt.show()
+    # fig.savefig('../image/horizon.pdf', bbox_inches='tight')
+
+
+def plot_jcost(args, vehicle):
+    iter_num = np.load('../data/iter_num2.npy').item()
+
+    fig, ax = plt.subplots()
+
+    for i in range(iter_num):
+        step_jcost_data = np.zeros((1, 2))
+        jcost = np.load('../data/jcost2{}.npy'.format(i))
+        trigger = np.load('../data/trigger2{}.npy'.format(i))
+
+        step_pre = 0
+        for j in range(trigger.shape[0]):
+            step_pos = 0
+            # ax.plot(step_pre, horizon[j], marker='*')
+            step_jcost_data = np.concatenate(
+                [step_jcost_data, np.array([[step_pre, jcost[j]]])], axis=0)
+            step_pos += step_pre + int(trigger[j])
+            # ax.plot(step_pos, horizon[j], marker='*')
+            step_jcost_data = np.concatenate(
+                [step_jcost_data, np.array([[step_pos, jcost[j]]])], axis=0)
+            step_pre = step_pos
+
+        step_jcost_data = np.concatenate(
+            [step_jcost_data, np.array([[step_pre, jcost[-1]]])], axis=0)
+        ax.plot(step_jcost_data[1:, 0], step_jcost_data[1:, 1], linewidth=2)
+        ax.set_xlabel(r'Time', fontsize=15)
+        ax.set_ylabel(r'Cost', fontsize=15)
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+        ax.grid(linestyle='dotted')
+    plt.show()
+    # fig.savefig('../image/horizon.pdf', bbox_inches='tight')
 
 
 def plot_traj_trigger(args, vehicle):
+    iter_num = np.load('../data/iter_num2.npy').item()
+
     pathr = np.zeros((1, 3))
-    fig, ax = plt.subplots(figsize=(6.0, 8.0))
     for i in range(100):
         if i == 0:
             xr = np.array(args.xinit_r).reshape(-1)
@@ -133,14 +168,13 @@ def plot_traj_trigger(args, vehicle):
         xr_next = vehicle.realRK4(xr, ur)
         pathr = np.concatenate([pathr, xr.reshape(1, -1)])
         xr = xr_next
-    ax.plot(pathr[1:, 0], pathr[1:, 1], color='r', label='reference', linewidth=2)
-
-    iter_num = np.load('../data/iter_num.npy').item()
-    # cm = plt.cm.get_cmap('jet', iter_num)
 
     for i in range(iter_num):
-        traj = np.load('../data/traj{}.npy'.format(i))
-        trigger = np.load('../data/trigger{}.npy'.format(i))
+        fig, ax = plt.subplots(figsize=(6.0, 8.0))
+        ax.plot(pathr[1:, 0], pathr[1:, 1], color='r',
+                label='reference', linewidth=2)
+        traj = np.load('../data/traj2{}.npy'.format(i))
+        trigger = np.load('../data/trigger2{}.npy'.format(i))
         ax.scatter(traj[1, 0], traj[1, 1], marker='o', label='start', s=100, c='b')
         ax.plot(traj[1:, 0], traj[1:, 1],
                 label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2)
@@ -152,8 +186,8 @@ def plot_traj_trigger(args, vehicle):
             trigger_value += int(trigger[j]) + 1
             ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
                        color='c', marker='x', label='trigger:{0}'.format(int(trigger[j])), s=100)
-    ax.tick_params(axis='x', labelsize=15)
-    ax.tick_params(axis='y', labelsize=15)
-    ax.legend(bbox_to_anchor=(1.00, 1),
-              loc='upper left', borderaxespad=0, ncol=1, fontsize=15)
-    fig.savefig('../image/traj_trigger4.pdf', bbox_inches='tight')
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+        ax.legend(bbox_to_anchor=(1.00, 1), loc='upper left', borderaxespad=0, ncol=1, fontsize=15)
+        # plt.show()
+        fig.savefig('../image/traj_trigger5{}.pdf'.format(i + 1), bbox_inches='tight')

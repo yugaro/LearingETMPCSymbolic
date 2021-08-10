@@ -39,8 +39,6 @@ class ETMPC:
         self.beta = np.array([self.setBeta(
             self.b[i], self.Y[:, i], self.covs) for i in range(3)])
 
-        print(self.beta)
-
     def setBeta(self, b, Y, cov):
         # print(b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0])
         if b ** 2 - Y @ np.linalg.inv(cov) @ Y + cov.shape[0] < 0:
@@ -112,11 +110,14 @@ class ETMPC:
 
     def operation(self, mpc, simulator, estimator, x0):
         u0, solver_stats = mpc.make_step(x0)
+        jcost = 0
+        for i in range(self.horizon):
+            jcost += mpc.opt_aux_num['_aux', i, 0][1]
         ulist = np.zeros((1, 2))
         for i in range(self.horizon):
             ulist = np.concatenate(
                 [ulist, np.array(mpc.opt_x_num['_u', i, 0]).reshape(1, -1)])
-        return solver_stats['success'], ulist[1:, :]
+        return solver_stats['success'], ulist[1:, :], jcost
 
     def cF(self, pg):
         c = [np.sqrt(2 * np.log((2 * (self.alpha**2)) /
@@ -177,9 +178,9 @@ class ETMPC:
         _, stdsuc = self.gpmodels.predict(ze)
         if lflag:
             # stdbar = self.stdbarF(xi_values[:, 1]) / 1000
-            stdbar = 0.1
+            stdbar = 0.02
         else:
-            stdbar = 0.1
+            stdbar = 0.02
         if stdsuc < np.mean(stdbar):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
