@@ -10,13 +10,12 @@ np.random.seed(3)
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
-    symmodel = Symbolic(args, gpmodels)
+    symmodel = Symbolic(args, gpmodels, iter_num)
 
-    # Q, Qind, Cs = symmodel.safeyGame()
-    # np.save('../data/Q4.npy', Q)
-    # np.save('../data/Qind4.npy', Qind)
-    # np.save('../data/Cs4.npy', Cs)
-    # return
+    Q, Qind, Cs = symmodel.safeyGame()
+    np.save('../data/Q6{}.npy'.format(iter_num), Q)
+    np.save('../data/Qind6{}.npy'.format(iter_num), Qind)
+    np.save('../data/Cs6{}.npy'.format(iter_num), Cs)
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -97,11 +96,32 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
 
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
-                    if iter_num < 3:
+                    Qind = np.load('../data/Qind6{}.npy'.format(iter_num))
+                    Cs = np.load('../data/Cs6{}.npy'.format(iter_num))
+                    Xqlist = np.load('../data/Xqlist6{}.npy'.format(iter_num))
+                    etax = np.load('../data/etax6{}.npy'.format(iter_num))
+
+                    for j in range(10):
+                        xpoint = (np.round((xe - np.min(Xqlist, axis=1)) / etax)).astype(np.int)
+                        indcs = np.where(np.all(Qind == xpoint, axis=1))[0][0]
+
+                        u = Cs[indcs, :]
+                        ur = np.array([args.v_r, args.omega_r])
+
+                        xe_next = vehicle.errRK4(xe, u)
+                        xr_next = vehicle.realRK4(xr, ur)
+
+                        traj_data[iter_num] = np.concatenate(
+                            [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
+
+                        xe = xe_next
+                        xr = xr_next
+
+                    if iter_num < 4:
                         z_train_sum, y_train_sum = etmpc.dataCat(
                             ze_train[1:], ye_train[1:])
                         return [0, z_train_sum, y_train_sum]
-                    elif iter_num == 3:
+                    elif iter_num >= 4:
                         return [1, traj_data, trigger_data, u_data, horizon_data, jcost_data]
 
             else:

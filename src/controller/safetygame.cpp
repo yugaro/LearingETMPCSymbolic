@@ -109,7 +109,7 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
 }
 
 template <typename T>
-tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin)
+tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin, int flag_refcon)
 {
     cout << "start safety game." << endl;
     MatrixXd xvec(3, 1);
@@ -117,6 +117,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
     MatrixXd kstar(Y.rows(), 1);
     MatrixXd means(3, 1);
     double stds;
+    MatrixXd xvecnext(3, 1);
     MatrixXd xvecnext_lout(3, 1);
     MatrixXd xvecnext_uout(3, 1);
     MatrixXd xvecnext_lin(3, 1);
@@ -144,49 +145,74 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
 
     beta << 1, 1, 1;
 
-    for (int idq = 0; idq < Qind.rows(); idq++)
-    {
-        int uflag = 1;
-        for (int idu = 0; idu < Uq.rows(); idu++)
+    if (flag_refcon == 0){
+        for (int idq = 0; idq < Qind.rows(); idq++)
         {
-            if (idu == Uq.rows() - 1)
-                uflag = 0;
-            xvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0);
-            zvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0), Uq(idu, 0), Uq(idu, 1);
-
-            kstar = kstarF(alpha, Lambda, zvec, ZT);
-            means = (kstar.transpose() * xi).transpose();
-            stds = sqrt(pow(alpha, 2.0) - (kstar.transpose() * cov.inverse() * kstar)(0, 0));
-            trlen =  b * epsilon + beta * stds + etax_v;
-
-            xvecnext_lout = xvec + means - trlen - ellin;
-            xvecnext_uout = xvec + means + trlen + ellin;
-
-            xvecnext_lin = xvec + means - trlen;
-            xvecnext_uin = xvec + means + trlen;
-
-            int qflag = 0;
-            if ((xrange_l.array() <= xvecnext_lout.array()).all() == 1 && (xvecnext_uout.array() <= xrange_u.array()).all() == 1)
+            int uflag = 1;
+            for (int idu = 0; idu < Uq.rows(); idu++)
             {
-                Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
-                Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+                if (idu == Uq.rows() - 1)
+                    uflag = 0;
+                xvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0);
+                zvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0), Uq(idu, 0), Uq(idu, 1);
 
-                Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
-                Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+                kstar = kstarF(alpha, Lambda, zvec, ZT);
+                means = (kstar.transpose() * xi).transpose();
+                stds = sqrt(pow(alpha, 2.0) - (kstar.transpose() * cov.inverse() * kstar)(0, 0));
+                trlen =  b * epsilon + beta * stds + etax_v;
 
-                qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
+                xvecnext_lout = xvec + means - trlen - ellin;
+                xvecnext_uout = xvec + means + trlen + ellin;
+
+                xvecnext_lin = xvec + means - trlen;
+                xvecnext_uin = xvec + means + trlen;
+
+                int qflag = 0;
+                if ((xrange_l.array() <= xvecnext_lout.array()).all() == 1 && (xvecnext_uout.array() <= xrange_u.array()).all() == 1)
+                {
+                    Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+                    Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+
+                    Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+                    Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+
+                    qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
+                }
+                if (qflag == 1)
+                {
+                    cout << idq << "/" << Qind.rows() << endl;
+                    Cs(idq, 0) = Uq(idu, 0);
+                    Cs(idq, 1) = Uq(idu, 1);
+                    break;
+                }
+                if (uflag == 0)
+                {
+                    Q[Qind(idq, 0)][Qind(idq, 1)][Qind(idq, 2)] = 0;
+                }
             }
-            if (qflag == 1)
+        }
+    }
+    else if (flag_refcon == 1){
+        for (int idq = 0; idq < Qind.rows(); idq++)
+        {
+            double x_norm_min = 10000;
+
+            for (int idu = 0; idu < Uq.rows(); idu++)
             {
-                cout << idq << "/" << Qind.rows() << endl;
-                Cs(idq, 0) = Uq(idu, 0);
-                Cs(idq, 1) = Uq(idu, 1);
-                break;
+                xvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0);
+                zvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0), Uq(idu, 0), Uq(idu, 1);
+
+                kstar = kstarF(alpha, Lambda, zvec, ZT);
+                means = (kstar.transpose() * xi).transpose();
+                xvecnext = xvec + means;
+
+                if (x_norm_min > xvecnext.norm()){
+                    x_norm_min = xvecnext.norm();
+                    Cs(idq, 0) = Uq(idu, 0);
+                    Cs(idq, 1) = Uq(idu, 1);
+                }
             }
-            if (uflag == 0)
-            {
-                Q[Qind(idq, 0)][Qind(idq, 1)][Qind(idq, 2)] = 0;
-            }
+            cout << idq << "/" << Qind.rows() << endl;
         }
     }
     return forward_as_tuple(Q, Cs);
@@ -199,3 +225,27 @@ PYBIND11_MODULE(safetygame, m)
 }
 
 // g++ -O3 -Wall -shared -std=c++14 -undefined dynamic_lookup safetygame.cpp -o safetygame$(python3-config --extension-suffix)
+
+// int qflag = 0;
+// if ((xrange_l.array() <= xvecnext_lout.array()).all() == 1 && (xvecnext_uout.array() <= xrange_u.array()).all() == 1)
+// {
+//     Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+//     Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+
+//     Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
+//     Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+
+//     qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
+// }
+// if (qflag == 1)
+// {
+//     cout << idq << "/" << Qind.rows() << endl;
+//     Cs(idq, 0) = Uq(idu, 0);
+//     Cs(idq, 1) = Uq(idu, 1);
+//     break;
+// }
+// if (uflag == 0)
+// {
+//     Q[Qind(idq, 0)][Qind(idq, 1)][Qind(idq, 2)] = 0;
+// }
+// }

@@ -4,7 +4,7 @@ np.random.seed(3)
 
 
 class Symbolic:
-    def __init__(self, args, gpmodels):
+    def __init__(self, args, gpmodels, iter_num):
         self.gpmodels = gpmodels
         self.ZT = self.gpmodels.gpr.X_train_.astype(np.float64)
         self.Y = self.gpmodels.gpr.y_train_.astype(np.float64)
@@ -18,6 +18,7 @@ class Symbolic:
             np.exp(gpmodels.gpr.kernel_.theta[1:1 + 3]) ** 2).astype(np.float64)
         self.noises = np.exp(
             gpmodels.gpr.kernel_.theta[-1]).astype(np.float64)
+        self.iter_num = iter_num
 
         self.b = np.array(args.b).astype(np.float64)
         self.etax_param = args.etax_param
@@ -41,8 +42,9 @@ class Symbolic:
         self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
-        np.save('../data/Xqlist.npy', self.Xqlist)
-        np.save('../data/etax.npy', 2 / np.sqrt(3) * self.etax_v)
+        np.save('../data/Xqlist6{}.npy'.format(self.iter_num), self.Xqlist)
+        np.save('../data/etax6{}.npy'.format(self.iter_num),
+                2 / np.sqrt(3) * self.etax_v)
         np.save('../data/gamma.npy', self.gamma)
         np.save('../data/alpha.npy', self.alpha)
         np.save('../data/Lambdax.npy', self.Lambdax)
@@ -63,7 +65,7 @@ class Symbolic:
                           self.Xsafe[i, 1] + 0.000001, 2 / np.sqrt(3) * self.etax_v[i]).astype(np.float64) for i in range(3)]
 
     def setUq(self):
-        Vq = np.arange(-self.etau, self.v_max + 0.000001, self.etau)
+        Vq = np.arange(0, self.v_max + 0.000001, self.etau)
         Omegaq = np.arange(0, 2 * self.omega_max +
                            self.etau + 0.000001, self.etau)
         Uq = np.zeros((Vq.shape[0] * Omegaq.shape[0], 2))
@@ -88,10 +90,12 @@ class Symbolic:
         Qinit, Qind_init = self.setQind_init()
         # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
         # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
+        flag_refcon = 1
+        j = 0
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
-                               self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin)
+                               self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin, flag_refcon)
             Q = QCs[0]
             Cs = QCs[1]
             Qindlist = np.nonzero(np.array(Q))
@@ -101,9 +105,14 @@ class Symbolic:
                 if Qind.shape[0] == 0:
                     print('empty.')
                     return
-                print('complete.')
-                return Q, Qind, Cs
-            else:
-                Qinit = Q
-                Qind_init = Qind.astype(np.float64)
-                print('continue..')
+                if flag_refcon == 1:
+                    print('complete.')
+                    return Q, Qind, Cs
+                flag_refcon = 1
+                print('refine..')
+            Qinit = Q
+            Qind_init = Qind.astype(np.float64)
+            if j == 4:
+                flag_refcon = 1
+            j += 1
+            print('continue..')
