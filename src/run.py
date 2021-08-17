@@ -4,25 +4,32 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(3)
+np.random.seed(6)
 
 
-def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, iter_num):
+def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num)
 
     Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q6{}.npy'.format(iter_num), Q)
-    np.save('../data/Qind6{}.npy'.format(iter_num), Qind)
-    np.save('../data/Cs6{}.npy'.format(iter_num), Cs)
+    np.save('../data/Q7{}.npy'.format(iter_num), Q)
+    np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
+    np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
 
     while 1:
         ze_train = np.zeros((1, 5))
         ye_train = np.zeros((1, 3))
 
         # set initial state
-        x0 = np.array([np.random.rand(1) + 2, np.random.rand(1) + 2, 3 * np.random.rand(1)])
+        # x0 = np.array([np.random.rand(1) + 2, np.random.rand(1) + 2, 3 * np.random.rand(1)])
+        thetae0 = - np.pi * np.random.rand()
+        rotatione = np.array(
+            [[np.cos(-thetae0), np.sin(-thetae0)], [-np.sin(-thetae0), np.cos(-thetae0)]])
+        pos0 = np.random.rand(2) + 2
+        pose0 = rotatione @ pos0
+
+        x0 = np.array([pose0[0], pose0[1], thetae0])
 
         # set initial horizon
         horizon = args.horizon
@@ -51,8 +58,17 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                     if i == 0:
                         xe = x0.reshape(-1)
                         xr = np.array(args.xinit_r).reshape(-1)
+
+                        theta = xr[2] - xe[2]
+                        rotation = np.array(
+                            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+                        pos = xr[: 2] - rotation @ xe[: 2]
+                        state = np.concatenate([pos, np.array([theta])])
+
                         traj_data[iter_num] = np.concatenate(
-                            [traj_data[iter_num], (xr - xe).reshape(1, -1)], axis=0)
+                            [traj_data[iter_num], state.reshape(1, -1)], axis=0)
+                        xe_traj_data[iter_num] = np.concatenate(
+                            [xe_traj_data[iter_num], xe.reshape(1, -1)], axis=0)
                     xstar = np.array(
                         mpc.opt_x_num['_x', i, 0, 0]).reshape(-1)
 
@@ -63,8 +79,16 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                         xe_next = vehicle.errRK4(xe, u)
                         xr_next = vehicle.realRK4(xr, ur)
 
+                        theta_next = xr_next[2] - xe_next[2]
+                        rotation_next = np.array(
+                            [[np.cos(theta_next), -np.sin(theta_next)], [np.sin(theta_next), np.cos(theta_next)]])
+                        pos_next = xr_next[: 2] - rotation_next @ xe_next[: 2]
+                        state_next = np.concatenate([pos_next, np.array([theta_next])])
+
                         traj_data[iter_num] = np.concatenate(
-                            [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
+                            [traj_data[iter_num], state_next.reshape(1, -1)], axis=0)
+                        xe_traj_data[iter_num] = np.concatenate(
+                            [xe_traj_data[iter_num], xe_next.reshape(1, -1)], axis=0)
                         u_data[iter_num] = np.concatenate(
                             [u_data[iter_num], u.reshape(1, -1)], axis=0)
 
@@ -76,7 +100,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                         xr = xr_next
 
                         step += 1
-                        if step > 40:
+                        if step >= 41:
                             z_train_sum, y_train_sum = etmpc.dataCat(
                                 ze_train[1:], ye_train[1:])
                             return [0, z_train_sum, y_train_sum]
@@ -96,13 +120,17 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
 
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
-                    Qind = np.load('../data/Qind6{}.npy'.format(iter_num))
-                    Cs = np.load('../data/Cs6{}.npy'.format(iter_num))
+                    Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
+                    Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
                     Xqlist = np.load('../data/Xqlist6{}.npy'.format(iter_num))
                     etax = np.load('../data/etax6{}.npy'.format(iter_num))
 
-                    for j in range(10):
+                    for j in range(12):
+                        # print(xe)
                         xpoint = (np.round((xe - np.min(Xqlist, axis=1)) / etax)).astype(np.int)
+                        # print(xpoint)
+                        # print(np.max(Qind, axis=0))
+                        # print()
                         indcs = np.where(np.all(Qind == xpoint, axis=1))[0][0]
 
                         u = Cs[indcs, :]
@@ -111,18 +139,26 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                         xe_next = vehicle.errRK4(xe, u)
                         xr_next = vehicle.realRK4(xr, ur)
 
+                        theta_next = xr_next[2] - xe_next[2]
+                        rotation_next = np.array(
+                            [[np.cos(theta_next), -np.sin(theta_next)], [np.sin(theta_next), np.cos(theta_next)]])
+                        pos_next = xr_next[: 2] - rotation_next @ xe_next[: 2]
+                        state_next = np.concatenate([pos_next, np.array([theta_next])])
+
                         traj_data[iter_num] = np.concatenate(
-                            [traj_data[iter_num], (xr_next - xe_next).reshape(1, -1)], axis=0)
+                            [traj_data[iter_num], state_next.reshape(1, -1)], axis=0)
+                        xe_traj_data[iter_num] = np.concatenate(
+                            [xe_traj_data[iter_num], xe_next.reshape(1, -1)], axis=0)
 
                         xe = xe_next
                         xr = xr_next
 
-                    if iter_num < 4:
+                    if iter_num < 14:
                         z_train_sum, y_train_sum = etmpc.dataCat(
                             ze_train[1:], ye_train[1:])
                         return [0, z_train_sum, y_train_sum]
-                    elif iter_num >= 4:
-                        return [1, traj_data, trigger_data, u_data, horizon_data, jcost_data]
+                    elif iter_num >= 14:
+                        return [1, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data]
 
             else:
                 print('xi status:', xi_status)
@@ -141,12 +177,13 @@ if __name__ == '__main__':
     u_data = [np.zeros((1, 2)) for i in range(100)]
     horizon_data = [np.ones(1) * args.horizon for i in range(100)]
     jcost_data = [np.zeros(1) for i in range(100)]
+    xe_traj_data = [np.zeros((1, 3)) for i in range(100)]
     iter_num = 0
     while 1:
         print('Iter:', iter_num + 1)
         print('data points num:', z_train.shape[0])
         iterdata = iterTask(args, vehicle, z_train,
-                            y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, iter_num)
+                            y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data, iter_num)
         iter_num += 1
         if iterdata[0] == 1:
             print('Event-triggered mpc was completed in the iter ', iter_num, '.')
@@ -161,6 +198,7 @@ if __name__ == '__main__':
         np.save('../data/u2{}.npy'.format(i), iterdata[3][i][1:])
         np.save('../data/horizon2{}.npy'.format(i), iterdata[4][i])
         np.save('../data/jcost2{}.npy'.format(i), iterdata[5][i][1:])
+        np.save('../data/xe_traj2{}.npy'.format(i), iterdata[6][i][1:])
     np.save('../data/iter_num2.npy', np.array([iter_num]))
 
 # if xi_status != 'optimal':

@@ -7,8 +7,9 @@ np.random.seed(0)
 
 def make_data(args, vehicle):
     xinits = np.array(
-        [[-2, -2, 2], [-1, 1, -1], [1, -1, -1], [2, 2, 2], [0.5, 0.5, 0.5]])
+        [[-2, -2, 2], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [2, 2, 2], [-0.5, -0.5, -0.5]])
     # [-0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5],
+    # [[-2, -2, 2], [-1, 1, -1], [1, -1, -1], [2, 2, 2], [0.5, 0.5, 0.5]]
     xinits = xinits * 1
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
@@ -35,20 +36,34 @@ def make_data(args, vehicle):
 def trajPID(args, vehicle):
     xinit = np.array([3, 3, 3])
     traj_data = np.zeros((1, 3))
-    for i in range(12):
+    for i in range(100):
         if i == 0:
             xe = xinit
             xr = np.array(args.xinit_r).reshape(-1)
+
+            theta = xr[2] - xe[2]
+            rotation = np.array(
+                [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+            pos = xr[: 2] - rotation @ xe[: 2]
+            state = np.concatenate([pos, np.array([theta])])
+
             traj_data = np.concatenate(
-                [traj_data, (xr - xe).reshape(1, -1)], axis=0)
+                [traj_data, state.reshape(1, -1)], axis=0)
         u = vehicle.getPIDCon(xe)
         xe_next = vehicle.errRK4(xe, u)
 
         ur = np.array([args.v_r, args.omega_r])
         xr_next = vehicle.realRK4(xr, ur)
 
+        theta_next = xr_next[2] - xe_next[2]
+        rotation_next = np.array(
+            [[np.cos(theta_next), -np.sin(theta_next)], [np.sin(theta_next), np.cos(theta_next)]])
+        pos_next = xr_next[: 2] - rotation_next @ xe_next[: 2]
+        state_next = np.concatenate(
+            [pos_next, np.array([theta_next])])
+
         traj_data = np.concatenate(
-            [traj_data, (xr_next - xe_next).reshape(1, -1)], axis=0)
+            [traj_data, state_next.reshape(1, -1)], axis=0)
 
         xe = xe_next
         xr = xr_next
@@ -61,9 +76,11 @@ def trajPID(args, vehicle):
 if __name__ == '__main__':
     args = set_args()
     vehicle = Vehicle(args)
-    z_train, y_train = make_data(args, vehicle)
-    np.save('../data/z_train.npy', z_train)
-    np.save('../data/y_train.npy', y_train)
+    # z_train, y_train = make_data(args, vehicle)
+    # np.save('../data/z_train.npy', z_train)
+    # np.save('../data/y_train.npy', y_train)
+
+    trajPID(args, vehicle)
 
 # trajPID(args, vehicle)
 # def make_data(args, vehicle):

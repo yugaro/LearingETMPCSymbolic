@@ -177,11 +177,12 @@ class ETMPC:
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
         if lflag:
+            stdbar = self.stdbarF(xi_values[:, 1])
             # stdbar = self.stdbarF(xi_values[:, 1]) / 1000
-            stdbar = 0.02
+            # stdbar = 0.015
         else:
-            stdbar = 0.02
-        if stdsuc < np.mean(stdbar):
+            stdbar = 0.015
+        if stdsuc > np.min(stdbar) / 4:
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)

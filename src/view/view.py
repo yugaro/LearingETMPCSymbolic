@@ -70,12 +70,10 @@ def plot_contractive_set(args, vehicle):
 
 def plot_u_data(args, vehicle):
     iter_num = np.load('../data/iter_num2.npy').item()
-    fig, ax = plt.subplots()
     for i in range(iter_num):
+        fig, ax = plt.subplots()
         u = np.load('../data/u2{}.npy'.format(i))
         trigger = np.load('../data/trigger2{}.npy'.format(i))
-        # ax.plot(u[:, 0])
-        # ax.plot(u[:, 1])
         ax.plot(u[:, 0] / args.v_max + u[:, 1] / args.omega_max, linewidth=2)
 
         trigger_value = 0
@@ -97,7 +95,30 @@ def plot_horizon(args, vehicle):
     iter_num = np.load('../data/iter_num2.npy').item()
 
     fig, ax = plt.subplots()
+    linestyle_list = ['solid', 'dashed', 'dotted']
+    k = 0
     for i in range(iter_num):
+        # if i == 1 or i == 2 or i == 5:
+        #     step_horizon_data = np.zeros((1, 2))
+        #     horizon = np.load('../data/horizon2{}.npy'.format(i))
+        #     trigger = np.load('../data/trigger2{}.npy'.format(i))
+
+        #     step_pre = 0
+        #     for j in range(trigger.shape[0]):
+        #         step_pos = 0
+        #         # ax.plot(step_pre, horizon[j], marker='*')
+        #         step_horizon_data = np.concatenate(
+        #             [step_horizon_data, np.array([[step_pre, horizon[j]]])], axis=0)
+        #         step_pos += step_pre + int(trigger[j])
+        #         # ax.plot(step_pos, horizon[j], marker='*')
+        #         step_horizon_data = np.concatenate(
+        #             [step_horizon_data, np.array([[step_pos, horizon[j]]])], axis=0)
+        #         step_pre = step_pos
+        #     step_horizon_data = np.concatenate(
+        #         [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
+        #     ax.plot(step_horizon_data[1:, 0],
+        #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
+        #     k += 1
         step_horizon_data = np.zeros((1, 2))
         horizon = np.load('../data/horizon2{}.npy'.format(i))
         trigger = np.load('../data/trigger2{}.npy'.format(i))
@@ -116,15 +137,22 @@ def plot_horizon(args, vehicle):
         step_horizon_data = np.concatenate(
             [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
         ax.plot(step_horizon_data[1:, 0],
-                step_horizon_data[1:, 1], linewidth=2)
-        ax.hlines([1], 0, 40, color='magenta', linestyles='dashed')
-        ax.set_xlabel(r'Time', fontsize=15)
-        ax.set_ylabel(r'Prediction horizon', fontsize=15)
-        ax.tick_params(axis='x', labelsize=15)
-        ax.tick_params(axis='y', labelsize=15)
-        ax.grid(linestyle='dotted')
+                step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i))
+    ax.set_xlabel(r'Time [step]', fontsize=15)
+    ax.set_ylabel(r'Prediction horizon ($H_k$)', fontsize=15)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.hlines([1], 0, 40, color='magenta',
+              linestyles='dashdot', label=r'$H_k$ = 1')
+    ax.vlines([40], 0, 35, color='red', linestyles='dashed', label=r'deadline')
+    ax.legend(bbox_to_anchor=(0, 0.5), loc='upper left', borderaxespad=0, ncol=1, fontsize=15)
+    ax.grid(which='major', alpha=0.5, linestyle='dotted')
+    ax.set_yticks([1, 5, 10, 15, 20, 25, 30])
+    # ax.set_xticklabels([0, 1, 5, 10, 15, 20, 25, 30])
+    ax.set_xlim(0, 42)
+    ax.set_ylim(0, 32)
     plt.show()
-    # fig.savefig('../image/horizon.pdf', bbox_inches='tight')
+    fig.savefig('../image/horizon_traj.pdf', bbox_inches='tight')
 
 
 def plot_jcost(args, vehicle):
@@ -214,6 +242,16 @@ def plt_traj_all(args, vehicle):
         pathr = np.concatenate([pathr, xr.reshape(1, -1)])
         xr = xr_next
 
+    pathr2 = np.zeros((1, 3))
+    for i in range(100):
+        if i == 0:
+            xr = np.array(args.xinit_r).reshape(-1)
+            pathr2 = np.concatenate([pathr2, xr.reshape(1, -1)], axis=0)
+        ur = np.array([args.v_r, args.omega_r])
+        xr_next = vehicle.realRK4(xr, ur)
+        pathr2 = np.concatenate([pathr2, xr.reshape(1, -1)])
+        xr = xr_next
+
     for i in range(iter_num):
         traj = np.load('../data/traj2{}.npy'.format(i))
         trigger = np.load('../data/trigger2{}.npy'.format(i))
@@ -226,7 +264,7 @@ def plt_traj_all(args, vehicle):
                        label=r'start', s=100, color='navy', zorder=100)
             ax.plot(traj[1:args.horizon + trigger.shape[0] * 2 + 2, 0], traj[1:args.horizon + trigger.shape[0] * 2 + 2, 1],
                     label=r'ETMPC', linewidth=2, color='royalblue', zorder=1)
-            if traj.shape[0] != args.horizon + trigger.shape[0] * 2 + 2:
+            if traj.shape[0] != args.horizon + trigger.shape[0] * 2 + 1:
                 ax.plot(traj[args.horizon + trigger.shape[0] * 2 + 1:, 0], traj[args.horizon + trigger.shape[0] * 2 + 1:, 1],
                         label=r'symbolic control', linewidth=2, color='lime', linestyle='dashed', zorder=1)
             # ax.plot(traj[1:args.horizon + trigger.shape[0] * 2 + 2, 0], traj[1:args.horizon + trigger.shape[0] * 2 + 2, 1],
@@ -238,48 +276,78 @@ def plt_traj_all(args, vehicle):
 
             trigger_value = 0
             trigger_data = np.zeros((1, 2))
-
             for j in range(trigger.shape[0] - 1):
                 trigger_value += int(trigger[j]) + 1
                 trigger_data = np.concatenate([trigger_data, traj[trigger_value, :2].reshape(1, -1)])
-                # ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
-                #            color='magenta', marker='x', label='Trigger', s=100)
-                # ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
-                #            color='c', marker='x', label='Trigger:{0}'.format(int(trigger[j])), s=100)
             ax.scatter(trigger_data[1:, 0], trigger_data[1:, 1], color='coral',
                        marker='x', label=r'trigger', s=100, zorder=100)
             ax.add_patch(patches.Rectangle(xy=(-3, -3), width=1,
                                            height=1, color='forestgreen', fill=False, linewidth=2, hatch='\\', label=r'$\mathcal{X}_{\rm init}$',
                                            zorder=0))
-            # ax.pcolor(, hatch='/', edgecolor='grey',
-            #           facecolor='none', linewidth=0.0)
-            # ax.plot([-3, -3], [-2, -3], linestyle='dotted',
-            #         color='forestgreen', linewidth=2, zorder=0)
-            # ax.plot([-3, -2], [-2, -2], linestyle='dotted',
-            #         color='forestgreen', linewidth=2, zorder=0)
-            # ax.plot([-3, -2], [-3, -3], linestyle='dotted',
-            #         color='forestgreen', linewidth=2, zorder=0)
-            # ax.plot([-2, -2], [-2, -3], linestyle='dotted',
-            #         color='forestgreen', linewidth=2, zorder=0)
             ax.tick_params(axis='x', labelsize=15)
             ax.tick_params(axis='y', labelsize=15)
             ax.legend(bbox_to_anchor=(1, 0), loc='lower right',
                       borderaxespad=0, ncol=1, fontsize=15)
-            ax.set_xlim(-3.2, 2)
-            ax.set_ylim(-3.2, 2.5)
-            ax.grid(which='major', alpha=0.5)
-            # plt.show()
+            # ax.set_xlim(-3.2, 2)
+            # ax.set_ylim(-3.2, 2.5)
+            ax.set_xlabel(r'x', fontsize=20)
+            ax.set_ylabel(r'y', fontsize=20)
+            ax.grid(which='major', alpha=0.5, linestyle='dotted')
             fig.savefig('../image/traj_trigger6{}.pdf'.format(i),
                         bbox_inches='tight')
-    # np.random.seed(0)
-    # Z = np.random.rand(10, 10)
-    # Zm = Z * 0
-    # Z[3:5, 5:8] = 1
-    # fig, ax = plt.subplots(figsize=(9, 7))
-    # ax1 = ax.pcolormesh(Z)
 
-    # Zm = np.ma.masked_where(Z != 1, Z)
-    # print(Zm)
-    # ax2 = ax.pcolor(Zm, hatch='/', edgecolor='grey',
-    #                 facecolor='none', linewidth=0)
-    # plt.show()
+            # print('aaaaa')
+            # print(pathr2[1:traj.shape[0], 2])
+            # print('bbbbbbbbb')
+            # print(traj[1:, 2])
+            # plt.close()
+            # fig, ax = plt.subplots()
+            # ax.plot(np.abs(
+            #     ((pathr2[1:traj.shape[0], 2] - traj[1:, 2]) % np.pi) * 360 / np.pi))
+            # plt.show()
+            # plt.close()
+
+
+def plt_traj_xe(args, vehicle):
+    iter_num = np.load('../data/iter_num2.npy').item()
+    for i in range(iter_num):
+        xe_traj = np.load('../data/xe_traj2{}.npy'.format(i))
+        trigger = np.load('../data/trigger2{}.npy'.format(i))
+        fig, ax = plt.subplots()
+        ax.plot(np.abs(xe_traj[1:, 0]), linewidth=2)
+        ax.plot(np.abs(xe_traj[1:, 1]), linewidth=2)
+        ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2)
+        # plt.show()
+        fig.savefig('../image/xe_traj2{}.pdf'.format(i))
+
+        # trigger_value = 0
+        # trigger_theta_data = np.zeros(1)
+        # trigger_data = np.zeros(1)
+        # for j in range(trigger.shape[0] - 1):
+        #     trigger_value += int(trigger[j])
+        #     trigger_theta_data = np.concatenate(
+        #         [trigger_theta_data, np.array([xe_traj[trigger_value, 2]])])
+        #     trigger_data = np.concatenate([trigger_data, np.array([trigger_value])])
+        # ax.scatter(trigger_data[1:], np.abs(trigger_theta_data[1:]), color='coral',
+        #            marker='x', label=r'trigger', s=100, zorder=100)
+        # ax.set_xlabel(r'Time (step)', fontsize=15)
+        # ax.set_ylabel(r'$|\theta - \theta_r|$ [rad]', fontsize=15)
+        # ax.grid(which='major', alpha=0.5, linestyle='dotted')
+        # fig.savefig('../image/rad_traj2{}.pdf'.format(i))
+
+# ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
+#            color='magenta', marker='x', label='Trigger', s=100)
+# ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
+#            color='c', marker='x', label='Trigger:{0}'.format(int(trigger[j])), s=100)
+# np.random.seed(0)
+# Z = np.random.rand(10, 10)
+# Zm = Z * 0
+# Z[3:5, 5:8] = 1
+# fig, ax = plt.subplots(figsize=(9, 7))
+# ax1 = ax.pcolormesh(Z)
+
+# Zm = np.ma.masked_where(Z != 1, Z)
+# print(Zm)
+# ax2 = ax.pcolor(Zm, hatch='/', edgecolor='grey',
+#                 facecolor='none', linewidth=0)
+# plt.show()

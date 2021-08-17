@@ -7,6 +7,7 @@ from view.view import plot_u_data
 from view.view import plot_horizon
 from view.view import plot_jcost
 from view.view import plt_traj_all
+from view.view import plt_traj_xe
 
 
 if __name__ == '__main__':
@@ -20,3 +21,4 @@ if __name__ == '__main__':
     # traj_safety_controller(args, vehicle)
     # plot_traj_safe(args, vehicle)
     plt_traj_all(args, vehicle)
+    # plt_traj_xe(args, vehicle)
