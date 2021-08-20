@@ -76,11 +76,11 @@ def trajPID(args, vehicle):
 if __name__ == '__main__':
     args = set_args()
     vehicle = Vehicle(args)
-    # z_train, y_train = make_data(args, vehicle)
-    # np.save('../data/z_train.npy', z_train)
-    # np.save('../data/y_train.npy', y_train)
+    z_train, y_train = make_data(args, vehicle)
+    np.save('../data/z_train.npy', z_train)
+    np.save('../data/y_train.npy', y_train)
 
-    trajPID(args, vehicle)
+    # trajPID(args, vehicle)
 
 # trajPID(args, vehicle)
 # def make_data(args, vehicle):

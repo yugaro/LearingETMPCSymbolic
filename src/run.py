@@ -12,10 +12,10 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num)
 
-    Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q7{}.npy'.format(iter_num), Q)
-    np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
-    np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
+    # Q, Qind, Cs = symmodel.safeyGame()
+    # np.save('../data/Q7{}.npy'.format(iter_num), Q)
+    # np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
+    # np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -94,7 +94,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
 
                         if horizon != 1:
                             ze_train, ye_train = etmpc.learnD(
-                                xe, u, xe_next, ze_train, ye_train, xi_values, 1)
+                                xe, u, xe_next, ze_train, ye_train, xi_values, iter_num, 1)
 
                         xe = xe_next
                         xr = xr_next
@@ -117,15 +117,22 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                         print('trigger:', trigger_time)
                         print('updated horizon:', horizon)
                         break
-
+                print(np.abs(xe))
+                print(np.array(args.terminalset))
+                print(np.abs(xe) < np.array(args.terminalset))
+                print(np.all(np.abs(xe) < np.array(args.terminalset)))
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
-                    Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
-                    Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
+                    # if iter_num <= 14:
+                    #     Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
+                    #     Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
+                    # else:
+                    Qind = np.load('../data/Qind7{}.npy'.format(14))
+                    Cs = np.load('../data/Cs7{}.npy'.format(14))
                     Xqlist = np.load('../data/Xqlist6{}.npy'.format(iter_num))
                     etax = np.load('../data/etax6{}.npy'.format(iter_num))
 
-                    for j in range(12):
+                    for j in range(10):
                         # print(xe)
                         xpoint = (np.round((xe - np.min(Xqlist, axis=1)) / etax)).astype(np.int)
                         # print(xpoint)
@@ -193,13 +200,13 @@ if __name__ == '__main__':
             y_train = iterdata[2].copy()
             print('Proceed to the next iteration.')
     for i in range(iter_num):
-        np.save('../data/traj2{}.npy'.format(i), iterdata[1][i])
-        np.save('../data/trigger2{}.npy'.format(i), iterdata[2][i][1:])
-        np.save('../data/u2{}.npy'.format(i), iterdata[3][i][1:])
-        np.save('../data/horizon2{}.npy'.format(i), iterdata[4][i])
-        np.save('../data/jcost2{}.npy'.format(i), iterdata[5][i][1:])
-        np.save('../data/xe_traj2{}.npy'.format(i), iterdata[6][i][1:])
-    np.save('../data/iter_num2.npy', np.array([iter_num]))
+        np.save('../data/traj3{}.npy'.format(i), iterdata[1][i])
+        np.save('../data/trigger3{}.npy'.format(i), iterdata[2][i][1:])
+        np.save('../data/u3{}.npy'.format(i), iterdata[3][i][1:])
+        np.save('../data/horizon3{}.npy'.format(i), iterdata[4][i])
+        np.save('../data/jcost3{}.npy'.format(i), iterdata[5][i][1:])
+        np.save('../data/xe_traj3{}.npy'.format(i), iterdata[6][i][1:])
+    np.save('../data/iter_num3.npy', np.array([iter_num]))
 
 # if xi_status != 'optimal':
     #     print('xi status:', xi_status)

@@ -139,9 +139,9 @@ class ETMPC:
 
             xi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c) / 6]
+                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c) / 7.2]
             constranits += [xi[j] + (self.beta[j] * stdsuc + self.noises) /
-                            self.b[j] <= 1.4142 * self.alpha for j in range(3)]
+                            self.b[j] <= np.sqrt(2) * self.alpha for j in range(3)]
 
             xi_func = cp.geo_mean(xi)
             prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
@@ -173,7 +173,7 @@ class ETMPC:
         stdbar = np.diag(cbar * np.sqrt(self.Lambdax)) / self.beta
         return stdbar
 
-    def learnD(self, xe, u, xe_next, ze_train, ye_train, xi_values, lflag):
+    def learnD(self, xe, u, xe_next, ze_train, ye_train, xi_values, iter_num, lflag):
         ze = np.concatenate([xe, u], axis=0).reshape(1, -1)
         _, stdsuc = self.gpmodels.predict(ze)
         if lflag:

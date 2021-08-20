@@ -20,5 +20,5 @@ if __name__ == '__main__':
     # plot_contractive_set(args, vehicle)
     # traj_safety_controller(args, vehicle)
     # plot_traj_safe(args, vehicle)
-    plt_traj_all(args, vehicle)
-    # plt_traj_xe(args, vehicle)
+    # plt_traj_all(args, vehicle)
+    plt_traj_xe(args, vehicle)

@@ -92,7 +92,7 @@ def plot_u_data(args, vehicle):
 
 
 def plot_horizon(args, vehicle):
-    iter_num = np.load('../data/iter_num2.npy').item()
+    iter_num = np.load('../data/iter_num3.npy').item()
 
     fig, ax = plt.subplots()
     linestyle_list = ['solid', 'dashed', 'dotted']
@@ -120,8 +120,8 @@ def plot_horizon(args, vehicle):
         #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
         #     k += 1
         step_horizon_data = np.zeros((1, 2))
-        horizon = np.load('../data/horizon2{}.npy'.format(i))
-        trigger = np.load('../data/trigger2{}.npy'.format(i))
+        horizon = np.load('../data/horizon3{}.npy'.format(i))
+        trigger = np.load('../data/trigger3{}.npy'.format(i))
 
         step_pre = 0
         for j in range(trigger.shape[0]):
@@ -152,7 +152,7 @@ def plot_horizon(args, vehicle):
     ax.set_xlim(0, 42)
     ax.set_ylim(0, 32)
     plt.show()
-    fig.savefig('../image/horizon_traj.pdf', bbox_inches='tight')
+    fig.savefig('../image/horizon_traj3.pdf', bbox_inches='tight')
 
 
 def plot_jcost(args, vehicle):
@@ -230,7 +230,7 @@ def plot_traj_trigger(args, vehicle):
 
 
 def plt_traj_all(args, vehicle):
-    iter_num = np.load('../data/iter_num2.npy').item()
+    iter_num = np.load('../data/iter_num3.npy').item()
 
     pathr = np.zeros((1, 3))
     for i in range(22):
@@ -253,8 +253,8 @@ def plt_traj_all(args, vehicle):
         xr = xr_next
 
     for i in range(iter_num):
-        traj = np.load('../data/traj2{}.npy'.format(i))
-        trigger = np.load('../data/trigger2{}.npy'.format(i))
+        traj = np.load('../data/traj3{}.npy'.format(i))
+        trigger = np.load('../data/trigger3{}.npy'.format(i))
         if traj.shape[0] != 1:
             fig, ax = plt.subplots(figsize=(7.0, 8.0))
             ax.plot(pathr[1:, 0], pathr[1:, 1], color='red',
@@ -288,12 +288,12 @@ def plt_traj_all(args, vehicle):
             ax.tick_params(axis='y', labelsize=15)
             ax.legend(bbox_to_anchor=(1, 0), loc='lower right',
                       borderaxespad=0, ncol=1, fontsize=15)
-            # ax.set_xlim(-3.2, 2)
-            # ax.set_ylim(-3.2, 2.5)
+            ax.set_xlim(-3.2, 1.5)
+            ax.set_ylim(-3.2, 2.5)
             ax.set_xlabel(r'x', fontsize=20)
             ax.set_ylabel(r'y', fontsize=20)
             ax.grid(which='major', alpha=0.5, linestyle='dotted')
-            fig.savefig('../image/traj_trigger6{}.pdf'.format(i),
+            fig.savefig('../image/traj_trigger7{}.pdf'.format(i),
                         bbox_inches='tight')
 
             # print('aaaaa')
@@ -309,16 +309,16 @@ def plt_traj_all(args, vehicle):
 
 
 def plt_traj_xe(args, vehicle):
-    iter_num = np.load('../data/iter_num2.npy').item()
+    iter_num = np.load('../data/iter_num3.npy').item()
     for i in range(iter_num):
-        xe_traj = np.load('../data/xe_traj2{}.npy'.format(i))
-        trigger = np.load('../data/trigger2{}.npy'.format(i))
+        xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
+        trigger = np.load('../data/trigger3{}.npy'.format(i))
         fig, ax = plt.subplots()
         ax.plot(np.abs(xe_traj[1:, 0]), linewidth=2)
         ax.plot(np.abs(xe_traj[1:, 1]), linewidth=2)
         ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2)
         # plt.show()
-        fig.savefig('../image/xe_traj2{}.pdf'.format(i))
+        fig.savefig('../image/xe_traj7{}.pdf'.format(i))
 
         # trigger_value = 0
         # trigger_theta_data = np.zeros(1)
