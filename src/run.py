@@ -12,10 +12,10 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num)
 
-    # Q, Qind, Cs = symmodel.safeyGame()
-    # np.save('../data/Q7{}.npy'.format(iter_num), Q)
-    # np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
-    # np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
+    Q, Qind, Cs = symmodel.safeyGame()
+    np.save('../data/Q7{}.npy'.format(iter_num), Q)
+    np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
+    np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -117,18 +117,14 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                         print('trigger:', trigger_time)
                         print('updated horizon:', horizon)
                         break
-                print(np.abs(xe))
-                print(np.array(args.terminalset))
-                print(np.abs(xe) < np.array(args.terminalset))
-                print(np.all(np.abs(xe) < np.array(args.terminalset)))
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
-                    # if iter_num <= 14:
-                    #     Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
-                    #     Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
-                    # else:
-                    Qind = np.load('../data/Qind7{}.npy'.format(14))
-                    Cs = np.load('../data/Cs7{}.npy'.format(14))
+                    if iter_num <= 14:
+                        Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
+                        Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
+                    else:
+                        Qind = np.load('../data/Qind7{}.npy'.format(14))
+                        Cs = np.load('../data/Cs7{}.npy'.format(14))
                     Xqlist = np.load('../data/Xqlist6{}.npy'.format(iter_num))
                     etax = np.load('../data/etax6{}.npy'.format(iter_num))
 

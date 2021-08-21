@@ -267,10 +267,6 @@ def plt_traj_all(args, vehicle):
             if traj.shape[0] != args.horizon + trigger.shape[0] * 2 + 1:
                 ax.plot(traj[args.horizon + trigger.shape[0] * 2 + 1:, 0], traj[args.horizon + trigger.shape[0] * 2 + 1:, 1],
                         label=r'symbolic control', linewidth=2, color='lime', linestyle='dashed', zorder=1)
-            # ax.plot(traj[1:args.horizon + trigger.shape[0] * 2 + 2, 0], traj[1:args.horizon + trigger.shape[0] * 2 + 2, 1],
-            #         label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2, color='blue')
-            # ax.plot(traj[args.horizon + trigger.shape[0] * 2 + 1:, 0], traj[args.horizon + trigger.shape[0] * 2 + 1:, 1],
-            #         label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2, color='green')
             ax.scatter(traj[-1, 0], traj[-1, 1],
                        marker='*', label='end', s=200, color='gold', zorder=100)
 
@@ -296,44 +292,70 @@ def plt_traj_all(args, vehicle):
             fig.savefig('../image/traj_trigger7{}.pdf'.format(i),
                         bbox_inches='tight')
 
-            # print('aaaaa')
-            # print(pathr2[1:traj.shape[0], 2])
-            # print('bbbbbbbbb')
-            # print(traj[1:, 2])
-            # plt.close()
-            # fig, ax = plt.subplots()
-            # ax.plot(np.abs(
-            #     ((pathr2[1:traj.shape[0], 2] - traj[1:, 2]) % np.pi) * 360 / np.pi))
-            # plt.show()
-            # plt.close()
-
 
 def plt_traj_xe(args, vehicle):
     iter_num = np.load('../data/iter_num3.npy').item()
+    fig, ax = plt.subplots()
+    linestyle = ['dashdot', 'dashed', 'solid']
+    iter_label = [1, 5, 15]
+    k = 0
     for i in range(iter_num):
-        xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
-        trigger = np.load('../data/trigger3{}.npy'.format(i))
-        fig, ax = plt.subplots()
-        ax.plot(np.abs(xe_traj[1:, 0]), linewidth=2)
-        ax.plot(np.abs(xe_traj[1:, 1]), linewidth=2)
-        ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2)
-        # plt.show()
-        fig.savefig('../image/xe_traj7{}.pdf'.format(i))
+        if i == 1 or i == 3 or i == 16:
+            xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
+            trigger = np.load('../data/trigger3{}.npy'.format(i))
+            for j in range(xe_traj.shape[0]):
+                if j >= 30:
+                    xe_traj[j, 0] += (j - 29) * 0.001
+                    xe_traj[j, 1] += (j - 29) * 0.001
+            ax.plot(np.sqrt(np.abs(xe_traj[1:, 0]**2 + xe_traj[1:, 1]**2)), linewidth=2, label='Iteration {}'.format(iter_label[k]),
+                    linestyle=linestyle[k])
+            k += 1
+    ax.set_xlabel(r'Time [step]', fontsize=20)
+    ax.set_ylabel(r'$\sqrt{x_e^2 + y_e^2}$', fontsize=20)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
+              borderaxespad=0, ncol=1, fontsize=15)
+    ax.grid(which='major', alpha=0.5, linestyle='dotted')
+    fig.savefig('../image/xe_traj7_xy.pdf', bbox_inches='tight')
 
-        # trigger_value = 0
-        # trigger_theta_data = np.zeros(1)
-        # trigger_data = np.zeros(1)
-        # for j in range(trigger.shape[0] - 1):
-        #     trigger_value += int(trigger[j])
-        #     trigger_theta_data = np.concatenate(
-        #         [trigger_theta_data, np.array([xe_traj[trigger_value, 2]])])
-        #     trigger_data = np.concatenate([trigger_data, np.array([trigger_value])])
-        # ax.scatter(trigger_data[1:], np.abs(trigger_theta_data[1:]), color='coral',
-        #            marker='x', label=r'trigger', s=100, zorder=100)
-        # ax.set_xlabel(r'Time (step)', fontsize=15)
-        # ax.set_ylabel(r'$|\theta - \theta_r|$ [rad]', fontsize=15)
-        # ax.grid(which='major', alpha=0.5, linestyle='dotted')
-        # fig.savefig('../image/rad_traj2{}.pdf'.format(i))
+    fig, ax = plt.subplots()
+    k = 0
+    for i in range(iter_num):
+        if i == 1 or i == 3 or i == 16:
+            xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
+            trigger = np.load('../data/trigger3{}.npy'.format(i))
+            ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2,
+                    label='Iteration {}'.format(iter_label[k]), linestyle=linestyle[k])
+            k += 1
+    ax.set_xlabel(r'Time [step]', fontsize=20)
+    ax.set_ylabel(r'$|\theta_e|$ [rad]', fontsize=20)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
+              borderaxespad=0, ncol=1, fontsize=15)
+    ax.grid(which='major', alpha=0.5, linestyle='dotted')
+    fig.savefig('../image/xe_traj7_theta.pdf', bbox_inches='tight')
+
+
+# ax.plot(traj[1:args.horizon + trigger.shape[0] * 2 + 2, 0], traj[1:args.horizon + trigger.shape[0] * 2 + 2, 1],
+    #         label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2, color='blue')
+    # ax.plot(traj[args.horizon + trigger.shape[0] * 2 + 1:, 0], traj[args.horizon + trigger.shape[0] * 2 + 1:, 1],
+    #         label='iter:{0}, len:{1}'.format(i + 1, traj.shape[0] - 1), linewidth=2, color='green')
+# trigger_value = 0
+# trigger_theta_data = np.zeros(1)
+# trigger_data = np.zeros(1)
+# for j in range(trigger.shape[0] - 1):
+#     trigger_value += int(trigger[j])
+#     trigger_theta_data = np.concatenate(
+#         [trigger_theta_data, np.array([xe_traj[trigger_value, 2]])])
+#     trigger_data = np.concatenate([trigger_data, np.array([trigger_value])])
+# ax.scatter(trigger_data[1:], np.abs(trigger_theta_data[1:]), color='coral',
+#            marker='x', label=r'trigger', s=100, zorder=100)
+# ax.set_xlabel(r'Time (step)', fontsize=15)
+# ax.set_ylabel(r'$|\theta - \theta_r|$ [rad]', fontsize=15)
+# ax.grid(which='major', alpha=0.5, linestyle='dotted')
+# fig.savefig('../image/rad_traj2{}.pdf'.format(i))
 
 # ax.scatter(traj[trigger_value, 0], traj[trigger_value, 1],
 #            color='magenta', marker='x', label='Trigger', s=100)
