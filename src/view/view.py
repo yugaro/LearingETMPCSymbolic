@@ -69,26 +69,26 @@ def plot_contractive_set(args, vehicle):
 
 
 def plot_u_data(args, vehicle):
-    iter_num = np.load('../data/iter_num2.npy').item()
+    iter_num = np.load('../data/iter_num3.npy').item()
+    fig, ax = plt.subplots()
+    linestyle = ['dashdot', 'dashed', 'solid']
+    iter_label = [1, 5, 15]
+    k = 0
     for i in range(iter_num):
-        fig, ax = plt.subplots()
-        u = np.load('../data/u2{}.npy'.format(i))
-        trigger = np.load('../data/trigger2{}.npy'.format(i))
-        ax.plot(u[:, 0] / args.v_max + u[:, 1] / args.omega_max, linewidth=2)
-
-        trigger_value = 0
-        for j in range(trigger.shape[0] - 1):
-            trigger_value += int(trigger[j])
-            ax.plot(trigger_value, u[trigger_value, 0] /
-                    args.v_max + u[trigger_value, 1] / args.omega_max, marker='x', color='c', markersize=10)
-            # ax.plot(trigger_value, u[trigger_value, 1], marker='x')
-        ax.set_xlabel(r'Time', fontsize=15)
-        ax.set_ylabel(
-            r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=15)
-        ax.tick_params(axis='x', labelsize=15)
-        ax.tick_params(axis='y', labelsize=15)
-        ax.grid(linestyle='dotted')
-        fig.savefig('../image/utraj2{}.pdf'.format(i), bbox_inches='tight')
+        if i == 1 or i == 3 or i == 16:
+            u = np.load('../data/u3{}.npy'.format(i))
+            ax.plot(u[:, 0] / args.v_max + u[:, 1] /
+                    args.omega_max, linewidth=2, label='Iteration {}'.format(iter_label[k]), linestyle=linestyle[k])
+            k += 1
+    ax.set_xlabel(r'Time', fontsize=15)
+    ax.set_ylabel(
+        r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=15)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
+              borderaxespad=0, ncol=1, fontsize=15)
+    ax.grid(which='major', alpha=0.5, linestyle='dotted')
+    fig.savefig('../image/u_traj_sum.pdf', bbox_inches='tight')
 
 
 def plot_horizon(args, vehicle):
@@ -98,27 +98,6 @@ def plot_horizon(args, vehicle):
     linestyle_list = ['solid', 'dashed', 'dotted']
     k = 0
     for i in range(iter_num):
-        # if i == 1 or i == 2 or i == 5:
-        #     step_horizon_data = np.zeros((1, 2))
-        #     horizon = np.load('../data/horizon2{}.npy'.format(i))
-        #     trigger = np.load('../data/trigger2{}.npy'.format(i))
-
-        #     step_pre = 0
-        #     for j in range(trigger.shape[0]):
-        #         step_pos = 0
-        #         # ax.plot(step_pre, horizon[j], marker='*')
-        #         step_horizon_data = np.concatenate(
-        #             [step_horizon_data, np.array([[step_pre, horizon[j]]])], axis=0)
-        #         step_pos += step_pre + int(trigger[j])
-        #         # ax.plot(step_pos, horizon[j], marker='*')
-        #         step_horizon_data = np.concatenate(
-        #             [step_horizon_data, np.array([[step_pos, horizon[j]]])], axis=0)
-        #         step_pre = step_pos
-        #     step_horizon_data = np.concatenate(
-        #         [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
-        #     ax.plot(step_horizon_data[1:, 0],
-        #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
-        #     k += 1
         step_horizon_data = np.zeros((1, 2))
         horizon = np.load('../data/horizon3{}.npy'.format(i))
         trigger = np.load('../data/trigger3{}.npy'.format(i))
@@ -373,3 +352,51 @@ def plt_traj_xe(args, vehicle):
 # ax2 = ax.pcolor(Zm, hatch='/', edgecolor='grey',
 #                 facecolor='none', linewidth=0)
 # plt.show()
+
+# trigger = np.load('../data/trigger3{}.npy'.format(i))
+    # for j in range(xe_traj.shape[0]):
+    #     if j >= 30:
+    #         xe_traj[j, 0] += (j - 29) * 0.001
+    #         xe_traj[j, 1] += (j - 29) * 0.001
+    # ax.plot(np.sqrt(np.abs(xe_traj[1:, 0]**2 + xe_traj[1:, 1]**2)), linewidth=2, label='Iteration {}'.format(iter_label[k]),
+    #         linestyle=linestyle[k])
+    # for i in range(iter_num):
+    #     fig, ax = plt.subplots()
+    #     u = np.load('../data/u3{}.npy'.format(i))
+    #     trigger = np.load('../data/trigger3{}.npy'.format(i))
+    #     ax.plot(u[:, 0] / args.v_max + u[:, 1] / args.omega_max, linewidth=2)
+
+    #     trigger_value = 0
+    #     for j in range(trigger.shape[0] - 1):
+    #         trigger_value += int(trigger[j])
+    #         ax.plot(trigger_value, u[trigger_value, 0] /
+    #                 args.v_max + u[trigger_value, 1] / args.omega_max, marker='x', color='c', markersize=10)
+    #         # ax.plot(trigger_value, u[trigger_value, 1], marker='x')
+    #     ax.set_xlabel(r'Time', fontsize=15)
+    #     ax.set_ylabel(
+    #         r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=15)
+    #     ax.tick_params(axis='x', labelsize=15)
+    #     ax.tick_params(axis='y', labelsize=15)
+    #     ax.grid(linestyle='dotted')
+    #     fig.savefig('../image/utraj3{}.pdf'.format(i), bbox_inches='tight')
+    # if i == 1 or i == 2 or i == 5:
+    #     step_horizon_data = np.zeros((1, 2))
+    #     horizon = np.load('../data/horizon2{}.npy'.format(i))
+    #     trigger = np.load('../data/trigger2{}.npy'.format(i))
+
+    #     step_pre = 0
+    #     for j in range(trigger.shape[0]):
+    #         step_pos = 0
+    #         # ax.plot(step_pre, horizon[j], marker='*')
+    #         step_horizon_data = np.concatenate(
+    #             [step_horizon_data, np.array([[step_pre, horizon[j]]])], axis=0)
+    #         step_pos += step_pre + int(trigger[j])
+    #         # ax.plot(step_pos, horizon[j], marker='*')
+    #         step_horizon_data = np.concatenate(
+    #             [step_horizon_data, np.array([[step_pos, horizon[j]]])], axis=0)
+    #         step_pre = step_pos
+    #     step_horizon_data = np.concatenate(
+    #         [step_horizon_data, np.array([[step_pre, horizon[-1]]])], axis=0)
+    #     ax.plot(step_horizon_data[1:, 0],
+    #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
+    #     k += 1
