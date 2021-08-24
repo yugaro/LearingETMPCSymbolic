@@ -4,7 +4,8 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(6)
+np.random.seed(0)
+# 6
 
 
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data, iter_num):
@@ -12,10 +13,10 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num)
 
-    Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q7{}.npy'.format(iter_num), Q)
-    np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
-    np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
+    # Q, Qind, Cs = symmodel.safeyGame()
+    # np.save('../data/Q7{}.npy'.format(iter_num), Q)
+    # np.save('../data/Qind7{}.npy'.format(iter_num), Qind)
+    # np.save('../data/Cs7{}.npy'.format(iter_num), Cs)
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -55,7 +56,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
             if xi_status == 'optimal':
                 print('xi status:', xi_status)
                 for i in range(horizon + 1):
-                    if i == 0:
+                    if step == 0:
                         xe = x0.reshape(-1)
                         xr = np.array(args.xinit_r).reshape(-1)
 
@@ -128,12 +129,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                     Xqlist = np.load('../data/Xqlist6{}.npy'.format(iter_num))
                     etax = np.load('../data/etax6{}.npy'.format(iter_num))
 
-                    for j in range(10):
-                        # print(xe)
+                    while step <= 40:
                         xpoint = (np.round((xe - np.min(Xqlist, axis=1)) / etax)).astype(np.int)
-                        # print(xpoint)
-                        # print(np.max(Qind, axis=0))
-                        # print()
                         indcs = np.where(np.all(Qind == xpoint, axis=1))[0][0]
 
                         u = Cs[indcs, :]
@@ -152,9 +149,13 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                             [traj_data[iter_num], state_next.reshape(1, -1)], axis=0)
                         xe_traj_data[iter_num] = np.concatenate(
                             [xe_traj_data[iter_num], xe_next.reshape(1, -1)], axis=0)
+                        u_data[iter_num] = np.concatenate(
+                            [u_data[iter_num], u.reshape(1, -1)], axis=0)
 
                         xe = xe_next
                         xr = xr_next
+
+                        step += 1
 
                     if iter_num < 14:
                         z_train_sum, y_train_sum = etmpc.dataCat(

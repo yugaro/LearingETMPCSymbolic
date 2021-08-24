@@ -2,7 +2,7 @@ import numpy as np
 from blueprint.set_args import set_args
 from model.vehicle import Vehicle
 import matplotlib.pyplot as plt
-np.random.seed(0)
+np.random.seed(1)
 
 
 def make_data(args, vehicle):

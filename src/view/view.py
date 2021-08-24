@@ -39,7 +39,6 @@ def plot_traj_safe(args, vehicle):
         Cs = np.load('../data/Cs5{}.npy'.format(i))
 
         xe_traj, xr_traj = traj_safety_controller(args, vehicle, Qind, Cs)
-
         # fig, ax = plt.subplots(1, 1)
         # ax.plot(xe_traj[:, 0], xe_traj[:, 1])
         # fig.savefig('../image/traj_safe.pdf')
@@ -80,9 +79,9 @@ def plot_u_data(args, vehicle):
             ax.plot(u[:, 0] / args.v_max + u[:, 1] /
                     args.omega_max, linewidth=2, label='Iteration {}'.format(iter_label[k]), linestyle=linestyle[k])
             k += 1
-    ax.set_xlabel(r'Time', fontsize=15)
+    ax.set_xlabel(r'Time [step]', fontsize=20)
     ax.set_ylabel(
-        r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=15)
+        r'$\frac{|v|(t)}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=20)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
@@ -252,7 +251,7 @@ def plt_traj_all(args, vehicle):
             trigger_value = 0
             trigger_data = np.zeros((1, 2))
             for j in range(trigger.shape[0] - 1):
-                trigger_value += int(trigger[j]) + 1
+                trigger_value += int(trigger[j])
                 trigger_data = np.concatenate([trigger_data, traj[trigger_value, :2].reshape(1, -1)])
             ax.scatter(trigger_data[1:, 0], trigger_data[1:, 1], color='coral',
                        marker='x', label=r'trigger', s=100, zorder=100)
@@ -265,10 +264,10 @@ def plt_traj_all(args, vehicle):
                       borderaxespad=0, ncol=1, fontsize=15)
             ax.set_xlim(-3.2, 1.5)
             ax.set_ylim(-3.2, 2.5)
-            ax.set_xlabel(r'x', fontsize=20)
-            ax.set_ylabel(r'y', fontsize=20)
+            ax.set_xlabel(r'x-axis', fontsize=20)
+            ax.set_ylabel(r'y-axis', fontsize=20)
             ax.grid(which='major', alpha=0.5, linestyle='dotted')
-            fig.savefig('../image/traj_trigger7{}.pdf'.format(i),
+            fig.savefig('../image/traj_trigger11{}.pdf'.format(i),
                         bbox_inches='tight')
 
 
@@ -279,7 +278,7 @@ def plt_traj_xe(args, vehicle):
     iter_label = [1, 5, 15]
     k = 0
     for i in range(iter_num):
-        if i == 1 or i == 3 or i == 16:
+        if i == 0 or i == 3 or i == 14:
             xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
             trigger = np.load('../data/trigger3{}.npy'.format(i))
             for j in range(xe_traj.shape[0]):
@@ -290,7 +289,7 @@ def plt_traj_xe(args, vehicle):
                     linestyle=linestyle[k])
             k += 1
     ax.set_xlabel(r'Time [step]', fontsize=20)
-    ax.set_ylabel(r'$\sqrt{x_e^2 + y_e^2}$', fontsize=20)
+    ax.set_ylabel(r'$\sqrt{{\rm x}_e^2(t) + {\rm y}_e^2(t)}$', fontsize=20)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
@@ -301,14 +300,14 @@ def plt_traj_xe(args, vehicle):
     fig, ax = plt.subplots()
     k = 0
     for i in range(iter_num):
-        if i == 1 or i == 3 or i == 16:
+        if i == 0 or i == 3 or i == 14:
             xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
             trigger = np.load('../data/trigger3{}.npy'.format(i))
             ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2,
                     label='Iteration {}'.format(iter_label[k]), linestyle=linestyle[k])
             k += 1
     ax.set_xlabel(r'Time [step]', fontsize=20)
-    ax.set_ylabel(r'$|\theta_e|$ [rad]', fontsize=20)
+    ax.set_ylabel(r'$|\theta_e(t)|$ [rad]', fontsize=20)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
