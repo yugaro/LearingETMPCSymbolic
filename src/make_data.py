@@ -2,14 +2,14 @@ import numpy as np
 from blueprint.set_args import set_args
 from model.vehicle import Vehicle
 import matplotlib.pyplot as plt
-np.random.seed(1)
+np.random.seed(0)
 
 
 def make_data(args, vehicle):
     xinits = np.array(
-        [[-2, -2, 2], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [2, 2, 2], [-0.5, -0.5, -0.5]])
+        [[2, 2, -2], [0.5, 0.5, 0.5], [-0.5, -0.5, -0.5], [-2, -2, 2], [-0.25, -0.25, -0.25]])
     # [-0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5],
-    # [[-2, -2, 2], [-1, 1, -1], [1, -1, -1], [2, 2, 2], [0.5, 0.5, 0.5]]
+    # [[-2, -2, 2], [-1, 1, -1], [1, -1, -1], [2, 2, 2], [0.5, 0.5, 0.5], [-0.5, -0.5, -0.5]]
     xinits = xinits * 1
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))

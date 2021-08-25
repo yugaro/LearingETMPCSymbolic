@@ -4,7 +4,7 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(0)
+np.random.seed(11)
 # 6
 
 
@@ -121,8 +121,8 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
                 if (horizon == 1) or (np.all(np.abs(xe) < np.array(args.terminalset))):
                     print('Horizon becomes 1.')
                     if iter_num <= 14:
-                        Qind = np.load('../data/Qind7{}.npy'.format(iter_num))
-                        Cs = np.load('../data/Cs7{}.npy'.format(iter_num))
+                        Qind = np.load('../data/Qind7{}.npy'.format(14))
+                        Cs = np.load('../data/Cs7{}.npy'.format(14))
                     else:
                         Qind = np.load('../data/Qind7{}.npy'.format(14))
                         Cs = np.load('../data/Cs7{}.npy'.format(14))
