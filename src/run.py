@@ -4,8 +4,8 @@ from model.vehicle import Vehicle
 from model.gp import GP
 from controller.symbolic import Symbolic
 from controller.etmpc import ETMPC
-np.random.seed(11)
-# 6
+np.random.seed(15)
+# 8
 
 
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data, iter_num):
@@ -157,11 +157,11 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
 
                         step += 1
 
-                    if iter_num < 14:
+                    if iter_num < 9:
                         z_train_sum, y_train_sum = etmpc.dataCat(
                             ze_train[1:], ye_train[1:])
                         return [0, z_train_sum, y_train_sum]
-                    elif iter_num >= 14:
+                    elif iter_num >= 9:
                         return [1, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data]
 
             else:

@@ -139,7 +139,7 @@ class ETMPC:
 
             xi = cp.Variable(3, pos=True)
             constranits = [cp.quad_form(cp.multiply(
-                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c) / 7.2]
+                self.b, xi) + self.beta * stdsuc + self.noises, np.linalg.inv(self.Lambdax)) <= np.min(c) / 10]
             constranits += [xi[j] + (self.beta[j] * stdsuc + self.noises) /
                             self.b[j] <= np.sqrt(2) * self.alpha for j in range(3)]
 
@@ -182,7 +182,7 @@ class ETMPC:
             # stdbar = 0.015
         else:
             stdbar = 0.015
-        if stdsuc > np.min(stdbar) / 4:
+        if stdsuc > np.min(stdbar) / np.sqrt(iter_num + 1):
             ze_train = np.concatenate([ze_train, ze], axis=0)
             ye_train = np.concatenate(
                 [ye_train, (xe_next - xe).reshape(1, -1)], axis=0)

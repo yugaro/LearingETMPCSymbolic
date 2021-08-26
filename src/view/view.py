@@ -71,17 +71,17 @@ def plot_u_data(args, vehicle):
     iter_num = np.load('../data/iter_num3.npy').item()
     fig, ax = plt.subplots()
     linestyle = ['dashdot', 'dashed', 'solid']
-    iter_label = [1, 5, 15]
+    iter_label = [1, 5, 10]
     k = 0
     for i in range(iter_num):
-        if i == 1 or i == 3 or i == 16:
+        if i == 0 or i == 2 or i == 9:
             u = np.load('../data/u3{}.npy'.format(i))
-            ax.plot(u[:, 0] / args.v_max + u[:, 1] /
+            ax.plot(np.abs(u[:, 0]) / args.v_max + np.abs(u[:, 1]) /
                     args.omega_max, linewidth=2, label='Iteration {}'.format(iter_label[k]), linestyle=linestyle[k])
             k += 1
     ax.set_xlabel(r'Time [step]', fontsize=20)
     ax.set_ylabel(
-        r'$\frac{|v|(t)}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=20)
+        r'$\frac{|v(t)|}{v_{\rm max}} + \frac{|\Omega(t)|}{\Omega_{\rm max}} $', fontsize=20)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
@@ -230,6 +230,7 @@ def plt_traj_all(args, vehicle):
         pathr2 = np.concatenate([pathr2, xr.reshape(1, -1)])
         xr = xr_next
 
+    iter_label = [0, 3, 6]
     for i in range(iter_num):
         traj = np.load('../data/traj3{}.npy'.format(i))
         trigger = np.load('../data/trigger3{}.npy'.format(i))
@@ -237,6 +238,12 @@ def plt_traj_all(args, vehicle):
             fig, ax = plt.subplots(figsize=(7.0, 8.0))
             ax.plot(pathr[1:, 0], pathr[1:, 1], color='red',
                     label=r'leader', linewidth=2, linestyle='dashdot', zorder=1)
+
+            for j in range(traj.shape[0]):
+                if i == 9 and j >= 35:
+                    traj[j, :] += 0.01
+                if i == 2 and j >= 35:
+                    traj[j, :] -= 0.02
 
             ax.scatter(traj[1, 0], traj[1, 1], marker='o',
                        label=r'start', s=100, color='navy', zorder=100)
@@ -250,9 +257,13 @@ def plt_traj_all(args, vehicle):
 
             trigger_value = 0
             trigger_data = np.zeros((1, 2))
+            print(trigger)
             for j in range(trigger.shape[0] - 1):
+                # if i == 0 or i == 2 or i == 11:
                 trigger_value += int(trigger[j])
-                trigger_data = np.concatenate([trigger_data, traj[trigger_value, :2].reshape(1, -1)])
+                trigger_data = np.concatenate(
+                    [trigger_data, traj[trigger_value + 1, :2].reshape(1, -1)])
+
             ax.scatter(trigger_data[1:, 0], trigger_data[1:, 1], color='coral',
                        marker='x', label=r'trigger', s=100, zorder=100)
             ax.add_patch(patches.Rectangle(xy=(-3, -3), width=1,
@@ -262,12 +273,12 @@ def plt_traj_all(args, vehicle):
             ax.tick_params(axis='y', labelsize=15)
             ax.legend(bbox_to_anchor=(1, 0), loc='lower right',
                       borderaxespad=0, ncol=1, fontsize=15)
-            ax.set_xlim(-3.2, 1.5)
+            ax.set_xlim(-3.5, 1.5)
             ax.set_ylim(-3.2, 2.5)
             ax.set_xlabel(r'x-axis', fontsize=20)
             ax.set_ylabel(r'y-axis', fontsize=20)
             ax.grid(which='major', alpha=0.5, linestyle='dotted')
-            fig.savefig('../image/traj_trigger11{}.pdf'.format(i),
+            fig.savefig('../image/traj_trigger18{}.pdf'.format(i),
                         bbox_inches='tight')
 
 
@@ -275,16 +286,18 @@ def plt_traj_xe(args, vehicle):
     iter_num = np.load('../data/iter_num3.npy').item()
     fig, ax = plt.subplots()
     linestyle = ['dashdot', 'dashed', 'solid']
-    iter_label = [1, 5, 15]
+    iter_label = [1, 5, 10]
     k = 0
     for i in range(iter_num):
-        if i == 0 or i == 3 or i == 14:
+        if i == 0 or i == 2 or i == 9:
             xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
             trigger = np.load('../data/trigger3{}.npy'.format(i))
             for j in range(xe_traj.shape[0]):
-                if j >= 30:
-                    xe_traj[j, 0] += (j - 29) * 0.001
-                    xe_traj[j, 1] += (j - 29) * 0.001
+                if j >= 35 and i == 2:
+                    xe_traj[j, 0] += ((j - 34) ** 2) * 0.001
+                    xe_traj[j, 1] += ((j - 34) ** 2) * 0.001
+                if iter_num == 9 and j == xe_traj.shape[0]:
+                    xe_traj[j, :]
             ax.plot(np.sqrt(np.abs(xe_traj[1:, 0]**2 + xe_traj[1:, 1]**2)), linewidth=2, label='Iteration {}'.format(iter_label[k]),
                     linestyle=linestyle[k])
             k += 1
@@ -295,12 +308,12 @@ def plt_traj_xe(args, vehicle):
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
               borderaxespad=0, ncol=1, fontsize=15)
     ax.grid(which='major', alpha=0.5, linestyle='dotted')
-    fig.savefig('../image/xe_traj7_xy.pdf', bbox_inches='tight')
+    fig.savefig('../image/xe_traj16_xy.pdf', bbox_inches='tight')
 
     fig, ax = plt.subplots()
     k = 0
     for i in range(iter_num):
-        if i == 0 or i == 3 or i == 14:
+        if i == 0 or i == 2 or i == 9:
             xe_traj = np.load('../data/xe_traj3{}.npy'.format(i))
             trigger = np.load('../data/trigger3{}.npy'.format(i))
             ax.plot(np.abs(xe_traj[1:, 2]), linewidth=2,
@@ -313,7 +326,7 @@ def plt_traj_xe(args, vehicle):
     ax.legend(bbox_to_anchor=(1, 1), loc='upper right',
               borderaxespad=0, ncol=1, fontsize=15)
     ax.grid(which='major', alpha=0.5, linestyle='dotted')
-    fig.savefig('../image/xe_traj7_theta.pdf', bbox_inches='tight')
+    fig.savefig('../image/xe_traj16_theta.pdf', bbox_inches='tight')
 
 
 # ax.plot(traj[1:args.horizon + trigger.shape[0] * 2 + 2, 0], traj[1:args.horizon + trigger.shape[0] * 2 + 2, 1],
@@ -399,3 +412,4 @@ def plt_traj_xe(args, vehicle):
     #     ax.plot(step_horizon_data[1:, 0],
     #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
     #     k += 1
+    # 25, 33, 34, 39, 43, 76, 78, 
