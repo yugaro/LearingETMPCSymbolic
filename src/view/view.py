@@ -146,7 +146,6 @@ def plot_jcost(args, vehicle):
         step_pre = 0
         for j in range(trigger.shape[0]):
             step_pos = 0
-            # ax.plot(step_pre, horizon[j], marker='*')
             step_jcost_data = np.concatenate(
                 [step_jcost_data, np.array([[step_pre, jcost[j]]])], axis=0)
             step_pos += step_pre + int(trigger[j])
@@ -412,4 +411,4 @@ def plt_traj_xe(args, vehicle):
     #     ax.plot(step_horizon_data[1:, 0],
     #             step_horizon_data[1:, 1], linewidth=2, label=r'iter{}'.format(i), linestyle=linestyle_list[k])
     #     k += 1
-    # 25, 33, 34, 39, 43, 76, 78, 
+    # 25, 33, 34, 39, 43, 76, 78,
