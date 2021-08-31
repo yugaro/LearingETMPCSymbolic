@@ -208,7 +208,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 if (xvecnext(2, 0) > 2 * 3.14159265358592){
                     xvecnext(2, 0) = xvecnext(2, 0) / 2 * 3.14159265358592;
                 }
-                
+
                 if (x_norm_min > xvecnext.norm()){
                     x_norm_min = xvecnext.norm();
                     Cs(idq, 0) = Uq(idu, 0);

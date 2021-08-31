@@ -90,8 +90,7 @@ class Symbolic:
         Qinit, Qind_init = self.setQind_init()
         # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
         # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
-        flag_refcon = 1
-        j = 0
+        flag_refcon = 0
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
@@ -112,7 +111,4 @@ class Symbolic:
                 print('refine..')
             Qinit = Q
             Qind_init = Qind.astype(np.float64)
-            if j == 4:
-                flag_refcon = 1
-            j += 1
             print('continue..')
