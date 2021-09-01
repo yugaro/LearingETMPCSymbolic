@@ -42,12 +42,12 @@ class Symbolic:
         self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
-        np.save('../data/Xqlist6{}.npy'.format(self.iter_num), self.Xqlist)
-        np.save('../data/etax6{}.npy'.format(self.iter_num),
-                2 / np.sqrt(3) * self.etax_v)
-        np.save('../data/gamma.npy', self.gamma)
-        np.save('../data/alpha.npy', self.alpha)
-        np.save('../data/Lambdax.npy', self.Lambdax)
+        # np.save('../data/Xqlist6{}.npy'.format(self.iter_num), self.Xqlist)
+        # np.save('../data/etax6{}.npy'.format(self.iter_num),
+        #         2 / np.sqrt(3) * self.etax_v)
+        # np.save('../data/gamma.npy', self.gamma)
+        # np.save('../data/alpha.npy', self.alpha)
+        # np.save('../data/Lambdax.npy', self.Lambdax)
 
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
@@ -91,6 +91,14 @@ class Symbolic:
         # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
         # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
         flag_refcon = 0
+        print(self.Xqlist)
+        print(self.Lambdax)
+        print(self.xqparams)
+        print(self.etax_v)
+        return
+        # zsuc = np.array([-0.126906, -0.126906, -0.126906, 0, 0]).reshape(1, -1)
+        # mean, std = self.gpmodels.predict(zsuc)
+        # return
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,

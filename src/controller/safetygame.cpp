@@ -145,6 +145,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
 
     beta << 1, 1, 1;
 
+
     if (flag_refcon == 0){
         for (int idq = 0; idq < Qind.rows(); idq++)
         {
@@ -191,8 +192,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 }
             }
         }
-    }
-    else if (flag_refcon == 1){
+    }else if (flag_refcon == 1){
         for (int idq = 0; idq < Qind.rows(); idq++)
         {
             double x_norm_min = 10000;
