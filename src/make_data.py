@@ -16,7 +16,7 @@ def make_data(args, vehicle):
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
 
-    p_num = 10
+    p_num = 12
 
     for i in range(xinits.shape[0] * p_num):
         if i % p_num == 0:
@@ -83,7 +83,6 @@ if __name__ == '__main__':
     z_train, y_train = make_data(args, vehicle)
     np.save('../data/z_train.npy', z_train)
     np.save('../data/y_train.npy', y_train)
-
     # trajPID(args, vehicle)
 
 # trajPID(args, vehicle)

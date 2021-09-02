@@ -91,11 +91,11 @@ class Symbolic:
         # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
         # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
         flag_refcon = 0
-        print(self.Xqlist)
-        print(self.Lambdax)
-        print(self.xqparams)
-        print(self.etax_v)
-        return
+        # print(self.Xqlist)
+        # print(self.Lambdax)
+        # print(self.xqparams)
+        # print(self.etax_v)
+        # return
         # zsuc = np.array([-0.126906, -0.126906, -0.126906, 0, 0]).reshape(1, -1)
         # mean, std = self.gpmodels.predict(zsuc)
         # return
