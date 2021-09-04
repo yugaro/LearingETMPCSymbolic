@@ -15,7 +15,7 @@ class GP:
                                 noise_level_bounds=(1e-40, 1e40))
         self.csk = ConstantKernel(constant_value_bounds=(1e-40, 1e40))
         self.gpr = GaussianProcessRegressor(
-            alpha=1e-4,
+            alpha=1e-3,
             kernel=self.csk * self.rbfk + self.whtk,
             # normalize_y=True,
             n_restarts_optimizer=100,
