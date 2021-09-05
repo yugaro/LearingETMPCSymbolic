@@ -8,7 +8,8 @@ np.random.seed(0)
 def make_data(args, vehicle):
     xinits = np.array(
         [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5],
-         [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5]])
+         [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5],
+         [0, 0, 0.5], [0, 0, -0.5], [0, 0.5, 0], [0, -0.5, 0], [0.5, 0, 0], [-0.5, 0, 0]])
     # [-0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5],
     # [[-2, -2, 2], [-1, 1, -1], [1, -1, -1], [2, 2, 2], [0.5, 0.5, 0.5], [-0.5, -0.5, -0.5]]
     # seed:0, [[2, 2, 2], [-0.5, -0.5, 0.5], [0.5, 0.5, -0.5], [-2, -2, -2], [-0.5, -0.5, -0.5]]
@@ -19,13 +20,13 @@ def make_data(args, vehicle):
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
 
-    p_num = 12
+    p_num = 6
 
     for i in range(xinits.shape[0] * p_num):
         if i % p_num == 0:
             j = i // p_num
             x = xinits[j, :]
-        if np.random.rand(1) > 1.5:
+        if np.random.rand(1) > 1.3:
             u = np.array([2, 2 * 1]) * \
                 np.random.rand(1) - np.array([0, 1])
         else:
@@ -38,6 +39,7 @@ def make_data(args, vehicle):
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
 
+    print(z_train[:, [3, 4]])
     fig, ax = plt.subplots()
     ax.plot(y_train[:, 0], label=r'${\rm x}$')
     ax.plot(y_train[:, 1], label=r'${\rm y}$')

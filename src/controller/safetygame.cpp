@@ -109,14 +109,14 @@ int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_lout, MatrixXd Qind_u
 }
 
 template <typename T>
-tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin, int flag_refcon)
+tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, double alpha, Ref<RMatrix<T>> Lambda, Ref<RMatrix<T>> Lambdax, Ref<RMatrix<T>> cov, double noises, Ref<RMatrix<T>> ZT, Ref<RMatrix<T>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, Ref<RMatrix<T>> etax_v, double epsilon, double gamma, Ref<RMatrix<T>> ellin, int flag_refcon, Ref<RMatrix<T>> y_mean, Ref<RMatrix<T>> y_std)
 {
     cout << "start safety game." << endl;
     MatrixXd xvec(3, 1);
     MatrixXd zvec(5, 1);
     MatrixXd kstar(Y.rows(), 1);
     MatrixXd means(3, 1);
-    double stds;
+    MatrixXd stds;
     MatrixXd xvecnext(3, 1);
     MatrixXd xvecnext_lout(3, 1);
     MatrixXd xvecnext_uout(3, 1);
@@ -145,7 +145,6 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
 
     beta << 1, 1, 1;
 
-
     if (flag_refcon == 0){
         for (int idq = 0; idq < Qind.rows(); idq++)
         {
@@ -158,9 +157,9 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 zvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0), Uq(idu, 0), Uq(idu, 1);
 
                 kstar = kstarF(alpha, Lambda, zvec, ZT);
-                means = (kstar.transpose() * xi).transpose();
-                stds = sqrt(pow(alpha, 2.0) - (kstar.transpose() * cov.inverse() * kstar)(0, 0));
-                trlen =  b * epsilon + beta * stds + etax_v;
+                means = ((kstar.transpose() * xi).transpose()).cwiseProduct(y_std) + y_mean;
+                stds = sqrt(pow(alpha, 2.0) - (kstar.transpose() * cov.inverse() * kstar)(0, 0)) * y_std;
+                trlen = b.cwiseProduct(y_std) * epsilon + beta.cwiseProduct(stds) + etax_v;
 
                 xvecnext_lout = xvec + means - trlen - ellin;
                 xvecnext_uout = xvec + means + trlen + ellin;

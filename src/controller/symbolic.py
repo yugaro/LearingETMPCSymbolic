@@ -4,10 +4,12 @@ np.random.seed(3)
 
 
 class Symbolic:
-    def __init__(self, args, gpmodels, iter_num):
+    def __init__(self, args, gpmodels, iter_num, y_train):
         self.gpmodels = gpmodels
         self.ZT = self.gpmodels.gpr.X_train_.astype(np.float64)
         self.Y = self.gpmodels.gpr.y_train_.astype(np.float64)
+        self.y_mean = np.mean(y_train, axis=0).reshape(-1, 1)
+        self.y_std = np.std(y_train, axis=0).reshape(-1, 1)
         self.covs = self.gpmodels.gpr.L_ @ self.gpmodels.gpr.L_.T.astype(
             np.float64)
         self.alpha = np.sqrt(
@@ -42,6 +44,13 @@ class Symbolic:
         self.cin = self.setC(self.alpha, self.gamma)
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
+
+        # print(self.y_mean)
+        # print(self.y_std)
+        # print(self.gamma)
+        # print(self.cin)
+        # print(self.ellin)
+        # print(self.covs)
         # np.save('../data/Xqlist6{}.npy'.format(self.iter_num), self.Xqlist)
         # np.save('../data/etax6{}.npy'.format(self.iter_num),
         #         2 / np.sqrt(3) * self.etax_v)
@@ -59,8 +68,11 @@ class Symbolic:
         return np.sqrt(2 * np.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
 
     def setXqlist(self):
+        # print(self.Lambdax)
+        # print(self.Xsafe)
         for i in range(3):
             self.Xsafe[i, :] = self.Xsafe[i, :] * self.xqparams[i]
+        # print(self.Xsafe)
         return [np.arange(self.Xsafe[i, 0],
                           self.Xsafe[i, 1] + 0.000001, 2 / np.sqrt(3) * self.etax_v[i]).astype(np.float64) for i in range(3)]
 
@@ -91,18 +103,22 @@ class Symbolic:
         # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
         # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
         flag_refcon = 0
-        print(self.Xqlist)
-        print(self.Lambdax)
-        print(self.xqparams)
-        print(self.etax_v)
-        return
+        # print(self.Xqlist)
+        # print(self.Lambdax)
+        # print(self.etax_v)
+        # zsuc = np.array([-0.476906, -0.476906, -0.476906, 0, 0]).reshape(1, -1)
+        # meansuc, stdsuc = self.gpmodels.predict(zsuc)
+        # print(self.gpmodels.gpr.kernel_)
+        # print(meansuc)
+        # print(stdsuc)
+        # return
         # zsuc = np.array([-0.126906, -0.126906, -0.126906, 0, 0]).reshape(1, -1)
         # mean, std = self.gpmodels.predict(zsuc)
         # return
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
-                               self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin, flag_refcon)
+                               self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin, flag_refcon, self.y_mean, self.y_std)
             Q = QCs[0]
             Cs = QCs[1]
             Qindlist = np.nonzero(np.array(Q))
@@ -117,6 +133,6 @@ class Symbolic:
                     return Q, Qind, Cs
                 flag_refcon = 1
                 print('refine..')
-            Qinit = Q
-            Qind_init = Qind.astype(np.float64)
+            Qinit = Q.copy()
+            Qind_init = Qind.astype(np.float64).copy()
             print('continue..')

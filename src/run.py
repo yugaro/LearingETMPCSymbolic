@@ -11,7 +11,7 @@ np.random.seed(15)
 def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, horizon_data, jcost_data, xe_traj_data, iter_num):
     # gp and safety game
     gpmodels = GP(z_train, y_train, args.noise)
-    symmodel = Symbolic(args, gpmodels, iter_num)
+    symmodel = Symbolic(args, gpmodels, iter_num, y_train)
 
     Q, Qind, Cs = symmodel.safeyGame()
     np.save('../data/Q8{}.npy'.format(iter_num), Q)
