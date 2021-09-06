@@ -34,8 +34,7 @@ double kernelMetric(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin
 
 int contractiveF(double alpha, MatrixXd Lambda, MatrixXd xqout, MatrixXd xqin, double gamma)
 {
-    double kmd = kernelMetric(alpha, Lambda, xqout, xqin);
-    if (kmd > gamma) return 1;
+    if (kernelMetric(alpha, Lambda, xqout, xqin) > gamma) return 1;
     return 0;
 }
 
@@ -175,6 +174,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
 
                     Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
                     Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
+
 
                     qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
                 }

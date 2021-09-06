@@ -10,16 +10,15 @@ class GP:
         self.y_train = y_train
         self.noise = noise
         self.rbfk = RBF(length_scale=np.ones(
-            z_train.shape[1]), length_scale_bounds=(1e-40, 1e40))
-        self.whtk = WhiteKernel(noise_level=self.noise,
-                                noise_level_bounds=(1e-40, 1e40))
-        self.csk = ConstantKernel(constant_value_bounds=(1e-40, 1e40))
+            z_train.shape[1]), )
+        self.whtk = WhiteKernel(noise_level=self.noise,)
+        self.csk = ConstantKernel()
         self.gpr = GaussianProcessRegressor(
-            # alpha=1e-3,
             alpha=0,
             kernel=self.csk * self.rbfk + self.whtk,
             normalize_y=True,
             random_state=0,
+            n_restarts_optimizer=20
         )
         self.gpr.fit(self.z_train, self.y_train)
 
@@ -27,3 +26,8 @@ class GP:
         means, stds = self.gpr.predict(
             z_test, return_std=True)
         return means, stds
+
+
+# length_scale_bounds=(1e-3, 1e3)
+# noise_level_bounds = (1e-3, 1e3)
+# constant_value_bounds = (1e-3, 1e3)
