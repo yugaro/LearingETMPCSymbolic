@@ -14,7 +14,7 @@ class GP:
         self.whtk = WhiteKernel(noise_level=self.noise,)
         self.csk = ConstantKernel()
         self.gpr = GaussianProcessRegressor(
-            alpha=0,
+            # alpha=0,
             kernel=self.csk * self.rbfk + self.whtk,
             normalize_y=True,
             random_state=0,

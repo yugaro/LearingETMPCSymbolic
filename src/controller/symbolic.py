@@ -121,10 +121,11 @@ class Symbolic:
             # # print(Qinit)
             # # print(Qind_init.shape)
             # print(Qind_init)
-            print(self.Xqlist)
+            # print(self.Xqlist)
             # print(self.gpmodels.gpr.kernel_)
-            print(self.ellin)
+            # print(self.ellin)
             # return
+
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
                                self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin, flag_refcon, self.y_mean, self.y_std)

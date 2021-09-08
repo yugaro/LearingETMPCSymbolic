@@ -16,7 +16,7 @@ def make_data(args, vehicle):
     # [0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5],
     # [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5],
     # [1, 1, 1]
-    xinits = xinits * 3 / 5
+    xinits = xinits
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
 
@@ -26,7 +26,7 @@ def make_data(args, vehicle):
         if i % p_num == 0:
             j = i // p_num
             x = xinits[j, :]
-        if np.random.rand() > 1:
+        if np.random.rand() > .9:
             u = np.array([2, 2 * 1]) * \
                 np.random.rand(1) - np.array([0, 1])
         else:
