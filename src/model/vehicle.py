@@ -44,6 +44,10 @@ class Vehicle:
         return x_next
 
     def getPIDCon(self, x):
-        v = self.v_r * np.cos(x[2]) + self.Kx * x[0]
-        omega = self.omega_r + self.v_r * (self.Ky * x[1] + self.Ktheta * np.sin(x[2]))
+        omega = self.omega_r + (self.v_r / 2) * \
+            (self.Ky * (x[1] + self.Ktheta * x[2]) +
+             (1 / self.Ktheta) * np.sin(x[2]))
+        v = self.Kx * x[0] + self.v_r * np.cos(x[2]) - self.Ktheta * x[2] * omega
+        # v = self.v_r * np.cos(x[2]) + self.Kx * x[0]
+        # omega = self.omega_r + self.v_r * (self.Ky * x[1] + self.Ktheta * np.sin(x[2]))
         return np.array([v, omega])

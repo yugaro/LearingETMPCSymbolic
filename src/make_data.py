@@ -7,7 +7,7 @@ np.random.seed(0)
 
 def make_data(args, vehicle):
     xinits = np.array(
-        [[0, 0, 0], [0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5],
+        [[0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5],
          [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5],
          [0, 0, 0.5], [0, 0, -0.5], [0, 0.5, 0], [0, -0.5, 0], [0.5, 0, 0], [-0.5, 0, 0]])
     # [-0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5],
@@ -16,7 +16,7 @@ def make_data(args, vehicle):
     # [0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5],
     # [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5],
     # [1, 1, 1]
-    xinits = xinits
+    xinits = xinits * 1
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
 
@@ -26,7 +26,7 @@ def make_data(args, vehicle):
         if i % p_num == 0:
             j = i // p_num
             x = xinits[j, :]
-        if np.random.rand() > .9:
+        if np.random.rand() > 1.9:
             u = np.array([2, 2 * 1]) * \
                 np.random.rand(1) - np.array([0, 1])
         else:
@@ -39,18 +39,18 @@ def make_data(args, vehicle):
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
 
-    fig, ax = plt.subplots()
-    ax.plot(y_train[:, 0], label=r'${\rm x}$')
-    ax.plot(y_train[:, 1], label=r'${\rm y}$')
-    ax.plot(y_train[:, 2], label=r'$\theta$')
-    ax.legend()
-    plt.show()
+    # fig, ax = plt.subplots()
+    # ax.plot(y_train[:, 0], label=r'${\rm x}$')
+    # ax.plot(y_train[:, 1], label=r'${\rm y}$')
+    # ax.plot(y_train[:, 2], label=r'$\theta$')
+    # ax.legend()
+    # plt.show()
 
     return z_train[1:], y_train[1:]
 
 
 def trajPID(args, vehicle):
-    xinit = np.array([3, 3, 3])
+    xinit = np.array([1, 1, 1])
     traj_data = np.zeros((1, 3))
     for i in range(100):
         if i == 0:
@@ -86,6 +86,7 @@ def trajPID(args, vehicle):
 
     fig, ax = plt.subplots(1, 1)
     ax.plot(traj_data[1:, 0], traj_data[1:, 1])
+    ax.scatter(traj_data[1, 0], traj_data[1, 1])
     plt.show()
 
 
@@ -95,7 +96,7 @@ if __name__ == '__main__':
     z_train, y_train = make_data(args, vehicle)
     np.save('../data/z_train.npy', z_train)
     np.save('../data/y_train.npy', y_train)
-    # trajPID(args, vehicle)
+    trajPID(args, vehicle)
 
 # trajPID(args, vehicle)
 # def make_data(args, vehicle):

@@ -10,11 +10,11 @@ class GP:
         self.y_train = y_train
         self.noise = noise
         self.rbfk = RBF(length_scale=np.ones(
-            z_train.shape[1]), )
-        self.whtk = WhiteKernel(noise_level=self.noise,)
+            z_train.shape[1]))
+        self.whtk = WhiteKernel(noise_level=self.noise)
         self.csk = ConstantKernel()
         self.gpr = GaussianProcessRegressor(
-            # alpha=0,
+            alpha=0,
             kernel=self.csk * self.rbfk + self.whtk,
             normalize_y=True,
             random_state=0,
