@@ -14,9 +14,9 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     symmodel = Symbolic(args, gpmodels, iter_num, y_train)
 
     Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q8{}.npy'.format(iter_num), Q)
-    np.save('../data/Qind8{}.npy'.format(iter_num), Qind)
-    np.save('../data/Cs8{}.npy'.format(iter_num), Cs)
+    np.save('../data/Q9{}.npy'.format(iter_num), Q)
+    np.save('../data/Qind9{}.npy'.format(iter_num), Qind)
+    np.save('../data/Cs9{}.npy'.format(iter_num), Cs)
     return
 
     while 1:

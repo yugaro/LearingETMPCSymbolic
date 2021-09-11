@@ -51,9 +51,9 @@ class Symbolic:
         # print(self.cin)
         # print(self.ellin)
         # print(self.covs)
-        # np.save('../data/Xqlist6{}.npy'.format(self.iter_num), self.Xqlist)
-        # np.save('../data/etax6{}.npy'.format(self.iter_num),
-        #         2 / np.sqrt(3) * self.etax_v)
+        np.save('../data/Xqlist8{}.npy'.format(self.iter_num), self.Xqlist)
+        np.save('../data/etax8{}.npy'.format(self.iter_num),
+                2 / np.sqrt(3) * self.etax_v)
         # np.save('../data/gamma.npy', self.gamma)
         # np.save('../data/alpha.npy', self.alpha)
         # np.save('../data/Lambdax.npy', self.Lambdax)
@@ -89,8 +89,8 @@ class Symbolic:
     def setQind_init(self):
         Qinit = np.zeros([self.Xqlist[0].shape[0],
                           self.Xqlist[1].shape[0], self.Xqlist[2].shape[0]]).astype(np.int)
-        Qind_out = np.ceil(self.ellout / (2 / np.sqrt(3) *
-                                          self.etax_v)).astype(np.int)
+        Qind_out = np.ceil(self.ellout / (2 * self.etax_v / np.sqrt(3)
+                                          )).astype(np.int)
         Qinit[Qind_out[0]: -Qind_out[0],
               Qind_out[1]: -Qind_out[1],
               Qind_out[2]: -Qind_out[2]] = 1
@@ -116,16 +116,15 @@ class Symbolic:
         # zsuc = np.array([-0.126906, -0.126906, -0.126906, 0, 0]).reshape(1, -1)
         # mean, std = self.gpmodels.predict(zsuc)
         # return
+        # print(np.array(Qinit))
+        # # print(Qinit)
+        # # print(Qind_init.shape)
+        # print(Qind_init)
+        # print(self.Xqlist)
+        # print(self.gpmodels.gpr.kernel_)
+        # print(self.ellin)
+        # print(Qind_init)
         while 1:
-            # print(np.array(Qinit))
-            # # print(Qinit)
-            # # print(Qind_init.shape)
-            # print(Qind_init)
-            # print(self.Xqlist)
-            # print(self.gpmodels.gpr.kernel_)
-            # print(self.ellin)
-            # return
-
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
                                self.Uq, self.etax_v, self.epsilon, self.gamma, self.ellin, flag_refcon, self.y_mean, self.y_std)
@@ -134,7 +133,7 @@ class Symbolic:
             Qindlist = np.nonzero(np.array(Q))
             Qind = np.concatenate([Qindlist[0].reshape(-1, 1), Qindlist[1].reshape(-1, 1),
                                    Qindlist[2].reshape(-1, 1)], axis=1)
-            # print(Qind)
+
             if Qind_init.shape[0] == Qind.shape[0]:
                 if Qind.shape[0] == 0:
                     print('empty.')

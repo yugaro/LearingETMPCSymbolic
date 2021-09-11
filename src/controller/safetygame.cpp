@@ -158,7 +158,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 kstar = kstarF(alpha, Lambda, zvec, ZT);
                 means = ((kstar.transpose() * xi).transpose()).cwiseProduct(y_std) + y_mean;
                 stds = sqrt(pow(alpha, 2.0) - (kstar.transpose() * cov.inverse() * kstar)(0, 0)) * y_std;
-                trlen = b.cwiseProduct(y_std) * epsilon + beta.cwiseProduct(stds) + etax_v;
+                trlen = b.cwiseProduct(y_std) * epsilon + beta.cwiseProduct(y_std).cwiseProduct(stds) + etax_v;
 
                 xvecnext_lout = xvec + means - trlen - ellin;
                 xvecnext_uout = xvec + means + trlen + ellin;
@@ -182,7 +182,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 {
                     cout << idq << "/" << Qind.rows() << endl;
                     Cs(idq, 0) = Uq(idu, 0);
-                    Cs(idq, 1) = Uq(idu, 1);
+                    Cs(idq, 1) = Uq(idu, 1);;
                     break;
                 }
                 if (uflag == 0)
@@ -228,26 +228,3 @@ PYBIND11_MODULE(safetygame, m)
 
 // g++ -O3 -Wall -shared -std=c++14 -undefined dynamic_lookup safetygame.cpp -o safetygame$(python3-config --extension-suffix)
 
-// int qflag = 0;
-// if ((xrange_l.array() <= xvecnext_lout.array()).all() == 1 && (xvecnext_uout.array() <= xrange_u.array()).all() == 1)
-// {
-//     Qind_lout = (xvecnext_lout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
-//     Qind_uout = (xvecnext_uout - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
-
-//     Qind_lin = (xvecnext_lin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v).array() + 1;
-//     Qind_uin = (xvecnext_uin - xrange_l).cwiseQuotient((2 / pow(3, 0.5)) * etax_v);
-
-//     qflag = safeF(Qsafe, Qind_lout, Qind_uout, Qind_lin, Qind_uin, Xqlist[0], Xqlist[1], Xqlist[2], alpha, Lambdax, gamma);
-// }
-// if (qflag == 1)
-// {
-//     cout << idq << "/" << Qind.rows() << endl;
-//     Cs(idq, 0) = Uq(idu, 0);
-//     Cs(idq, 1) = Uq(idu, 1);
-//     break;
-// }
-// if (uflag == 0)
-// {
-//     Q[Qind(idq, 0)][Qind(idq, 1)][Qind(idq, 2)] = 0;
-// }
-// }

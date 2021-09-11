@@ -1,12 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import open3d as o3d
 
 
 def traj_safety_controller(args, vehicle, Qind, Cs):
     # xe = etax * Qind[-1, :] + np.min(Xqlist, axis=1)
-    Xqlist = np.load('../data/Xqlist.npy')
-    etax = np.load('../data/etax.npy')
+    Xqlist = np.load('../data/Xqlist80.npy')
+    etax = np.load('../data/etax80.npy')
     xe = np.array([0.05, 0.05, 0.05])
     xe_traj = xe.reshape(1, -1)
     xr = np.array(args.xinit_r)
@@ -33,10 +34,12 @@ def traj_safety_controller(args, vehicle, Qind, Cs):
 def plot_traj_safe(args, vehicle):
     iter_num = np.load('../data/iter_num2.npy').item()
 
+    iter_num = 1
+
     for i in range(iter_num):
-        Q = np.load('../data/Q5{}.npy'.format(i))
-        Qind = np.load('../data/Qind5{}.npy'.format(i))
-        Cs = np.load('../data/Cs5{}.npy'.format(i))
+        Q = np.load('../data/Q8{}.npy'.format(i))
+        Qind = np.load('../data/Qind8{}.npy'.format(i))
+        Cs = np.load('../data/Cs8{}.npy'.format(i))
 
         xe_traj, xr_traj = traj_safety_controller(args, vehicle, Qind, Cs)
         # fig, ax = plt.subplots(1, 1)
@@ -45,16 +48,16 @@ def plot_traj_safe(args, vehicle):
 
         fig, ax = plt.subplots(1, 1)
         ax.plot(xr_traj[:, 0], xr_traj[:, 1])
-        fig.savefig('../image/traj_safer5{}.pdf'.format(i))
+        fig.savefig('../image/traj_safer8{}.pdf'.format(i))
 
 
 def plot_contractive_set(args, vehicle):
-    Q = np.load('../data/Q3.npy')
-    Qind = np.load('../data/Qind3.npy')
-    Cs = np.load('../data/Cs.npy')
-    Xqlist = np.load('../data/Xqlist.npy')
-    etax = np.load('../data/etax.npy')
-    gamma = np.load('../data/gamma.npy')
+    Q = np.load('../data/Q80.npy')
+    Qind = np.load('../data/Qind80.npy')
+    Cs = np.load('../data/Cs80.npy')
+    Xqlist = np.load('../data/Xqlist80.npy')
+    etax = np.load('../data/etax80.npy')
+    # gamma = np.load('../data/gamma.npy')
 
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(111, projection='3d')
@@ -63,8 +66,26 @@ def plot_contractive_set(args, vehicle):
     ax.set_xlabel(r"$X$")
     ax.set_ylabel(r"$Y$")
     ax.set_zlabel(r"$\theta$")
-    fig.savefig('../image/contractive_set.pdf')
+    fig.savefig('../image/contractive_set8.pdf')
     plt.show()
+
+
+def plot_3d(args):
+    Qind = np.load('../data/Qind80.npy')
+    Xqlist = np.load('../data/Xqlist80.npy')
+    etax = np.load('../data/etax80.npy')
+
+    # o3d.visualization.draw_geometries([Qind])
+
+    pcd = o3d.io.read_point_cloud("../../TestData/fragment.ply")
+    print(pcd)
+    # A = np.array([[1, 1, 1], [1, 2, 3], [4, 5, 6]])
+
+    # vis = o3d.visualization.Visualizer()
+    # vis.create_window('pcl', 640, 480, 50, 50, True)
+    # vis.add_geometry(A)
+
+
 
 
 def plot_u_data(args, vehicle):
