@@ -38,13 +38,13 @@ def make_data(args, vehicle):
         y_train = np.concatenate(
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
-
-    fig, ax = plt.subplots()
-    ax.plot(y_train[:, 0], label=r'${\rm x}$')
-    ax.plot(y_train[:, 1], label=r'${\rm y}$')
-    ax.plot(y_train[:, 2], label=r'$\theta$')
-    ax.legend()
-    plt.show()
+    print(z_train[:, [3, 4]])
+    # fig, ax = plt.subplots()
+    # ax.plot(y_train[:, 0], label=r'${\rm x}$')
+    # ax.plot(y_train[:, 1], label=r'${\rm y}$')
+    # ax.plot(y_train[:, 2], label=r'$\theta$')
+    # ax.legend()
+    # plt.show()
 
     return z_train[1:], y_train[1:]
 
@@ -84,10 +84,10 @@ def trajPID(args, vehicle):
         xe = xe_next
         xr = xr_next
 
-    # fig, ax = plt.subplots(1, 1)
-    # ax.plot(traj_data[1:, 0], traj_data[1:, 1])
-    # ax.scatter(traj_data[1, 0], traj_data[1, 1])
-    # plt.show()
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(traj_data[1:, 0], traj_data[1:, 1])
+    ax.scatter(traj_data[1, 0], traj_data[1, 1])
+    plt.show()
 
 
 if __name__ == '__main__':

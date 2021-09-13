@@ -3,5 +3,6 @@
         "*.rmd": "markdown",
         "iostream": "cpp",
         "valarray": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

@@ -180,7 +180,7 @@ tuple<vector<vector<vector<int>>>, RMatrix<T>> operation(vector<vector<vector<in
                 }
                 if (qflag == 1)
                 {
-                    cout << idq << "/" << Qind.rows() << endl;
+                    cout << idq << "/" << Qind.rows() << ", [" << xvec(0, 0) << "," << xvec(1, 0) << "," << xvec(2, 0) << "]" << endl;
                     Cs(idq, 0) = Uq(idu, 0);
                     Cs(idq, 1) = Uq(idu, 1);;
                     break;
@@ -227,4 +227,3 @@ PYBIND11_MODULE(safetygame, m)
 }
 
 // g++ -O3 -Wall -shared -std=c++14 -undefined dynamic_lookup safetygame.cpp -o safetygame$(python3-config --extension-suffix)
-
