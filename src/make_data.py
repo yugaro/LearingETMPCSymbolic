@@ -52,7 +52,7 @@ def make_data(args, vehicle):
 def trajPID(args, vehicle):
     xinit = np.array([2, 2, 2])
     traj_data = np.zeros((1, 3))
-    for i in range(100):
+    for i in range(90):
         if i == 0:
             xe = xinit
             xr = np.array(args.xinit_r).reshape(-1)
