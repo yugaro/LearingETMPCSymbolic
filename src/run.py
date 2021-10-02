@@ -13,11 +13,11 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num, y_train)
 
-    Q, Qind, Cs = symmodel.safeyGame()
-    np.save('../data/Q9{}.npy'.format(iter_num), Q)
-    np.save('../data/Qind9{}.npy'.format(iter_num), Qind)
-    np.save('../data/Cs9{}.npy'.format(iter_num), Cs)
-    return
+    # Q, Qind, Cs = symmodel.safeyGame()
+    # np.save('../data/Q9{}.npy'.format(iter_num), Q)
+    # np.save('../data/Qind9{}.npy'.format(iter_num), Qind)
+    # np.save('../data/Cs9{}.npy'.format(iter_num), Cs)
+    # return
 
     while 1:
         ze_train = np.zeros((1, 5))
@@ -28,7 +28,7 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
         thetae0 = - np.pi * np.random.rand()
         rotatione = np.array(
             [[np.cos(-thetae0), np.sin(-thetae0)], [-np.sin(-thetae0), np.cos(-thetae0)]])
-        pos0 = np.random.rand(2) + 2
+        pos0 = np.random.rand(2) + 0
         pose0 = rotatione @ pos0
 
         x0 = np.array([pose0[0], pose0[1], thetae0])

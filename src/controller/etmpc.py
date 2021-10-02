@@ -147,6 +147,8 @@ class ETMPC:
             prob_xi = cp.Problem(cp.Maximize(xi_func), constranits)
             prob_xi.solve(solver=cp.MOSEK)
 
+            print(prob_xi.status)
+
             if prob_xi.status == 'infeasible':
                 return prob_xi.status, 0
             xi_values = np.concatenate(

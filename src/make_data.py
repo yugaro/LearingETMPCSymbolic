@@ -20,7 +20,7 @@ def make_data(args, vehicle):
     z_train = np.zeros((1, 5))
     y_train = np.zeros((1, 3))
 
-    p_num = 8
+    p_num = 5
 
     for i in range(xinits.shape[0] * p_num):
         if i % p_num == 0:
