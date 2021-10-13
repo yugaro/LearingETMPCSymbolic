@@ -39,12 +39,12 @@ def make_data(args, vehicle):
             [y_train, (x_next - x).reshape(1, -1)], axis=0)
         x = x_next
     print(z_train[:, [3, 4]])
-    # fig, ax = plt.subplots()
-    # ax.plot(y_train[:, 0], label=r'${\rm x}$')
-    # ax.plot(y_train[:, 1], label=r'${\rm y}$')
-    # ax.plot(y_train[:, 2], label=r'$\theta$')
-    # ax.legend()
-    # plt.show()
+    fig, ax = plt.subplots()
+    ax.plot(y_train[:, 0], label=r'${\rm x}$')
+    ax.plot(y_train[:, 1], label=r'${\rm y}$')
+    ax.plot(y_train[:, 2], label=r'$\theta$')
+    ax.legend()
+    plt.show()
 
     return z_train[1:], y_train[1:]
 

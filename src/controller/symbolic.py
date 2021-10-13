@@ -1,5 +1,5 @@
 import numpy as np
-from controller import safetygame as sg
+# from controller import safetygame as sg
 np.random.seed(3)
 
 
