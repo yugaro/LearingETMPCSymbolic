@@ -13,11 +13,11 @@ def iterTask(args, vehicle, z_train, y_train, traj_data, trigger_data, u_data, h
     gpmodels = GP(z_train, y_train, args.noise)
     symmodel = Symbolic(args, gpmodels, iter_num, y_train)
 
-    # Q, Qind, Cs = symmodel.safeyGame()
-    # np.save('../data/Q9{}.npy'.format(iter_num), Q)
-    # np.save('../data/Qind9{}.npy'.format(iter_num), Qind)
-    # np.save('../data/Cs9{}.npy'.format(iter_num), Cs)
-    # return
+    Q, Qind, Cs = symmodel.safeyGame()
+    np.save('../data/Q10{}.npy'.format(iter_num), Q)
+    np.save('../data/Qind10{}.npy'.format(iter_num), Qind)
+    np.save('../data/Cs10{}.npy'.format(iter_num), Cs)
+    return
 
     while 1:
         ze_train = np.zeros((1, 5))

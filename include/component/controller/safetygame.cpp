@@ -27,11 +27,16 @@ MatrixXd kstarF(double alpha, MatrixXd Lambda, MatrixXd zvec, MatrixXd ZT)
     return pow(alpha, 2.0) * exp((-0.5 * (((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(0) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(1) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(2) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(3) + ((ZTprime * (Lambda.inverse())).cwiseProduct(ZTprime)).col(4))).array());
 }
 
-int safeF(vector<vector<vector<int>>>Qsafe, MatrixXd Qind_l, MatrixXd Qind_u){
-    for (int idq0 = int(Qind_l(0, 0)); idq0 <= int(Qind_u(0, 0)); idq0++){
-        for (int idq1 = int(Qind_l(1, 0)); idq1 <= int(Qind_u(1, 0)); idq1++){
-            for (int idq2 = int(Qind_l(2, 0)); idq2 <= int(Qind_u(2, 0)); idq2++){
-                if (Qsafe[idq0][idq1][idq2] == 0) return 0;
+int safeF(vector<vector<vector<int>>> Qsafe, MatrixXd Qind_l, MatrixXd Qind_u)
+{
+    for (int idq0 = int(Qind_l(0, 0)); idq0 <= int(Qind_u(0, 0)); idq0++)
+    {
+        for (int idq1 = int(Qind_l(1, 0)); idq1 <= int(Qind_u(1, 0)); idq1++)
+        {
+            for (int idq2 = int(Qind_l(2, 0)); idq2 <= int(Qind_u(2, 0)); idq2++)
+            {
+                if (Qsafe[idq0][idq1][idq2] == 0)
+                    return 0;
             }
         }
     }
@@ -41,7 +46,7 @@ int safeF(vector<vector<vector<int>>>Qsafe, MatrixXd Qind_l, MatrixXd Qind_u){
 template <typename T>
 vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix<T>> Qind, Ref<RMatrix<T>> alpha, vector<Ref<RMatrix<T>>> Lambda, vector<Ref<RMatrix<T>>> Lambdax, vector<Ref<RMatrix<T>>> cov, vector<Ref<RMatrix<T>>> noises, Ref<RMatrix<T>> ZT, vector<Ref<RMatrix<T>>> Y, Ref<RMatrix<T>> b, vector<Ref<RMatrix<T>>> Xqlist, Ref<RMatrix<T>> Uq, double etax, Ref<RMatrix<T>> epsilon)
 {
-    cout << "start safety game." << endl;
+    cout << " safety game." << endl;
     MatrixXd xvec(3, 1);
     MatrixXd zvec(5, 1);
     vector<double> kstarstar(3);
@@ -68,11 +73,15 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
         beta(i, 0) = sqrt(pow(b(i, 0), 2.0) - (Y[i].transpose() * (cov[i] + noises[i](0, 0) * MatrixXd::Identity(cov[i].rows(), cov[i].cols())).inverse() * Y[i])(0, 0) + cov[i].rows());
     }
 
-    for (int idq = 0; idq < Qind.rows(); idq++){
+    for (int idq = 0; idq < Qind.rows(); idq++)
+    {
         int uflag = 1;
-        for (int idu = 0; idu < Uq.rows(); idu++){
-            if (idu == Uq.rows() - 1) uflag = 0;
-            for (int i = 0; i < 3; i++){
+        for (int idu = 0; idu < Uq.rows(); idu++)
+        {
+            if (idu == Uq.rows() - 1)
+                uflag = 0;
+            for (int i = 0; i < 3; i++)
+            {
                 xvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0);
                 zvec << Xqlist[0](Qind(idq, 0), 0), Xqlist[1](Qind(idq, 1), 0), Xqlist[2](Qind(idq, 2), 0), Uq(idu, 0), Uq(idu, 1);
                 kstar[i] = kstarF(alpha(i, 0), Lambda[i], zvec, ZT);
@@ -83,16 +92,19 @@ vector<vector<vector<int>>> operation(vector<vector<vector<int>>> Q, Ref<RMatrix
             xvecnext_l = xvec + means - (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv);
             xvecnext_u = xvec + means + (b.cwiseProduct(epsilon) + beta.cwiseProduct(stds) + etaxv);
             int qflag = 0;
-            if ((xrange_l.array() <= xvecnext_l.array()).all() == 1 && (xvecnext_u.array() <= xrange_u.array()).all() == 1){
+            if ((xrange_l.array() <= xvecnext_l.array()).all() == 1 && (xvecnext_u.array() <= xrange_u.array()).all() == 1)
+            {
                 Qind_l = ((xvecnext_l - xrange_l) / etax).array() + 1;
                 Qind_u = (xvecnext_u - xrange_l) / etax;
                 qflag = safeF(Qsafe, Qind_l, Qind_u);
             }
-            if (qflag == 1){
+            if (qflag == 1)
+            {
                 cout << idq << endl;
                 break;
             }
-            if (uflag == 0){
+            if (uflag == 0)
+            {
                 Q[Qind(idq, 0)][Qind(idq, 1)][Qind(idq, 2)] = 0;
             }
         }
@@ -105,4 +117,3 @@ PYBIND11_MODULE(safetygame, m)
     m.doc() = "my test module";
     m.def("operation", &operation<double>, "");
 }
-

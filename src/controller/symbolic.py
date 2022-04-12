@@ -1,5 +1,5 @@
 import numpy as np
-# from controller import safetygame as sg
+from controller import safetygame as sg
 np.random.seed(3)
 
 
@@ -45,19 +45,6 @@ class Symbolic:
         self.ellin = np.diag(self.cin * np.sqrt(self.Lambdax)
                              ).reshape(-1).astype(np.float64)
 
-        # print(self.y_mean)
-        # print(self.y_std)
-        # print(self.gamma)
-        # print(self.cin)
-        # print(self.ellin)
-        # print(self.covs)
-        np.save('../data/Xqlist8{}.npy'.format(self.iter_num), self.Xqlist)
-        np.save('../data/etax8{}.npy'.format(self.iter_num),
-                2 / np.sqrt(3) * self.etax_v)
-        # np.save('../data/gamma.npy', self.gamma)
-        # np.save('../data/alpha.npy', self.alpha)
-        # np.save('../data/Lambdax.npy', self.Lambdax)
-
     def setEpsilon(self, alpha, Lambdax):
         return np.sqrt(2 * (alpha**2) * (1 - np.exp(-0.5 * self.etax_v @ np.linalg.inv(Lambdax) @ self.etax_v)))
 
@@ -68,11 +55,8 @@ class Symbolic:
         return np.sqrt(2 * np.log((2 * (alpha**2)) / (2 * (alpha**2) - (epsilon**2))))
 
     def setXqlist(self):
-        # print(self.Lambdax)
-        # print(self.Xsafe)
         for i in range(3):
             self.Xsafe[i, :] = self.Xsafe[i, :] * self.xqparams[i]
-        # print(self.Xsafe)
         return [np.arange(self.Xsafe[i, 0],
                           self.Xsafe[i, 1] + 0.001, 2 / np.sqrt(3) * self.etax_v[i]).astype(np.float64) for i in range(3)]
 
@@ -100,31 +84,11 @@ class Symbolic:
 
     def safeyGame(self):
         Qinit, Qind_init = self.setQind_init()
-        # Qinit = np.load('../data/Q2.npy').astype(np.int).tolist()
-        # Qind_init = np.load('../data/Qind2.npy').astype(np.float64)
         flag_refcon = 0
-        # print(self.Xqlist)
-        # print(self.alpha)
-        # print(self.Lambda)
-        # print(self.etax_v)
-        # zsuc = np.array([-0.476906, -0.476906, -0.476906, 0, 0]).reshape(1, -1)
-        # meansuc, stdsuc = self.gpmodels.predict(zsuc)
-        # print(self.gpmodels.gpr.kernel_)
-        # print(meansuc)
-        # print(stdsuc)
-        # return
-        # zsuc = np.array([-0.126906, -0.126906, -0.126906, 0, 0]).reshape(1, -1)
-        # mean, std = self.gpmodels.predict(zsuc)
-        # return
-        # print(np.array(Qinit))
-        # # print(Qinit)
-        # # print(Qind_init.shape)
-        # print(Qind_init)
         print(self.Xqlist)
         print(self.gpmodels.gpr.kernel_)
         print(self.ellin)
-        # return
-        # print(Qind_init)
+
         while 1:
             QCs = sg.operation(Qinit, Qind_init, self.alpha, self.Lambda, self.Lambdax, self.covs,
                                self.noises, self.ZT, self.Y, self.b, self.Xqlist,
